@@ -27,15 +27,7 @@ const uint32_t FG_NET_FDM_VERSION = 24;
 // Define a structure containing the top level flight dynamics model
 // parameters
 
-class FGNetFDM {
-
-public:
-
-    enum {
-        FG_MAX_ENGINES = 4,
-        FG_MAX_WHEELS = 3,
-        FG_MAX_TANKS = 4
-    };
+struct FGNetFDM {
 
     uint32_t version;		// increment when data values change
     uint32_t padding;		// padding

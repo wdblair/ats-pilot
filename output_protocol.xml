@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<PropertyList>
+<generic>
+   <output>
+      <line_separator>newline</line_separator>
+      <var_separator>tab</var_separator>
+
+      <chunk>
+         <name>/orientation/pitch-deg</name>
+         <node>/orientation/pitch-deg</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+
+      <chunk>
+         <name>/orientation/heading-deg</name>
+         <node>/orientation/heading-deg</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+
+      <chunk>
+         <name>/orientation/roll-rate-degps</name>
+         <node>/orientation/roll-rate-degps</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+       
+      <chunk>
+         <name>/orientation/pitch-rate-degps</name>
+         <node>/orientation/pitch-rate-degps</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+       
+      <chunk>
+         <name>/orientation/yaw-rate-degps</name>
+         <node>/orientation/yaw-rate-degps</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+       
+      <chunk>
+         <name>/accelerations/pilot/x-accel-fps_sec</name>
+         <node>/orientation/roll-rate-degps</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+       
+      <chunk>
+         <name>/accelerations/pilot/y-accel-fps_sec</name>
+         <node>/accelerations/pilot/y-accel-fps_sec</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+       
+      <chunk>
+         <name>/accelerations/pilot/z-accel-fps_sec</name>
+         <node>/accelerations/pilot/z-accel-fps_sec</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+       
+   </output>
+      
+</generic>
+</PropertyList>

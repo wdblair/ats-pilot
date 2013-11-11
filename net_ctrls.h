@@ -34,15 +34,14 @@ const uint32_t FG_NET_CTRLS_VERSION = 27;
 
 // Define a structure containing the control parameters
 
-class FGNetCtrls {
+enum {
+  FG_MAX_ENGINES = 4,
+  FG_MAX_WHEELS = 16,
+  FG_MAX_TANKS = 8
+};
 
-public:
 
-    enum {
-        FG_MAX_ENGINES = 4,
-        FG_MAX_WHEELS = 16,
-        FG_MAX_TANKS = 8
-    };
+struct FGNetCtrls {
 
     uint32_t version;		         // increment when data values change
 
