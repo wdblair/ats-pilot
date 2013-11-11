@@ -2,7 +2,7 @@
   autopilot
     
   A simple autopilot that just aims to 
-  keep the aircraft level using P controllers
+  keep the aircraft steady using P controllers
 *)
 
 %{^
@@ -45,8 +45,8 @@ make_pcontrol (
 end
 
 (*
-  There may be rules each plant would
-  like to enforce
+  There may be rules each plant would like to enforce. Allow each plant to
+  filter the result.
 *)
 extern
 fun {plant:tkind}
@@ -79,6 +79,9 @@ stacst pitch : tkind
     flight, but you  can imagine how our target values for each plant
     would change if our goal was to sustain a banked turn or decrease
     our altitude.
+    
+    A particular function or goal translates to target values for each
+    control law.
 *)
 implement control_law (sensors, actuators) = let
   var r: pcontrol (roll)

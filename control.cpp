@@ -141,8 +141,8 @@ int main () {
 
   server (sensors, 5000);
   client (actuators, "127.0.0.1", 5010);
-  
-  printf("Goliath Online\n");
+ 
+  cout << "Started Controller" << endl;
   
   while (1) {
     receive (sensors);

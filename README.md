@@ -16,6 +16,6 @@ identify each plant that is controlled.
   abst@ype pcontrol (tk:tkind)
 
   fun{tk:tkind}
-  make (target: double, p: double): pcontrol (tk)
+  make_pcontrol (target: double, p: double): pcontrol (tk)
 
-  fun update: (pcontrol, reference: double): double
+  fun{tk:tkind} update: (pcontrol(tk), reference: double): double
