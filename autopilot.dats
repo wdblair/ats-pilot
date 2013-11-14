@@ -1,14 +1,15 @@
 (*
   autopilot
     
-  A simple autopilot that just aims to 
-  keep the aircraft steady using P controllers
+  A simple autopilot that aims to keep an aircraft steady.
 *)
 
 %{^
 #include "net_ctrls.h"
 #include "net_fdm.h"
 
+#include <limits.h>
+#include <stdint.h>
 #include <math.h>
 
 typedef struct FGNetFDM FGNetFDM ;
@@ -36,12 +37,43 @@ abst@ype pcontrol (tk:tkind) = @{target=double, k=double}
 
 assume pcontrol (tk:tkind) = @{target=double, k=double}
 
+abst@ype pid (tk:tkind) = @{
+  target= double,
+  k_p= double,
+  k_i= double, 
+  k_d= double,
+  error_sum= double,
+  max_error= double,  
+  max_sum= double,
+  last_value= double
+}
+
+assume pid (tk:tkind) = @{
+  target= double,
+  k_p= double,
+  k_i= double, 
+  k_d= double,
+  error_sum= double,
+  max_sum= double,
+  last_value= double
+}
+
+val SCALING_FACTOR = 65536
+val INT_MAX = $extval (int, "INT_MAX")
+val MAX_I_TERM = $extval (int, "INT_MAX")
+
 fun {plant:tkind}
-make_pcontrol (
-  p: &pcontrol(plant)? >> pcontrol(plant), target: double, k: double
+make_pid (
+  p: &pid(plant)? >> pid(plant), target: double,
+  k_p: double, k_i: double, k_d: double
 ): void = begin
   p.target := target;
-  p.k := k
+  p.k_p    := k_p;
+  p.k_i    := k_i;
+  p.k_d    := k_d;
+  p.error_sum := 0.0;
+  p.max_sum := 1.0;
+  p.last_value := 0.0;
 end
 
 (*
@@ -51,16 +83,51 @@ end
 extern
 fun {plant:tkind}
 control_apply$filter (
-  p: &pcontrol (plant), new: double
+  p: &pid (plant), new: double
 ): double
 
-fun {plant:tkind}
-control_apply (
-  p: &pcontrol (plant), ref: double
+
+fun {plant: tkind}
+pid_apply (
+  p: &pid(plant), process: double
 ): double = let
-  val next = p.k * (ref - p.target)
+  val () = println! ("Process", process)
+  val error = process - p.target
+  val () = println! ("Error: ", error)
+  
+  val proportional = p.k_p * error
+  
+  val integral = ( let
+    val next_sum = p.error_sum + error
+  in
+    if next_sum > p.max_sum then 
+      p.k_i * p.max_sum where {
+        val _ = p.error_sum := p.max_sum;
+      }
+    else if next_sum < ~p.max_sum then
+      p.k_i * p.max_sum where {
+        val _ = p.error_sum := ~p.max_sum;      
+      }
+    else let
+      val () = p.error_sum := next_sum
+    in
+      p.k_i * p.error_sum
+    end
+  end 
+  ): double
+  
+  val () = println! ("Integral:", integral)
+  
+  val derivative = let
+    val diff = process - p.last_value
+  in
+    p.last_value := process;
+    p.k_d * diff
+  end
+  
+  val () = println! ("Proportional:", proportional)
 in
-  control_apply$filter<plant> (p, next)
+  control_apply$filter<plant> (p, (proportional + integral) + derivative)
 end
 
 extern
@@ -84,12 +151,12 @@ stacst pitch : tkind
     control law.
 *)
 implement control_law (sensors, actuators) = let
-  var r: pcontrol (roll)
-  var p: pcontrol (pitch)
+  var r: pid (roll)
+  var p: pid (pitch)
   
   val () = begin
-    make_pcontrol<roll> (r, 0.0, ~0.05);
-    make_pcontrol<pitch> (p, 5.0, 0.1);
+    make_pid<roll> (r, 0.0, ~0.07, 0.025, 0.06);
+    make_pid<pitch> (p, 5.0, 0.05, 0.005, 0.012);
   end
   
   fun cap (v: double, limit: double): double = let
@@ -100,12 +167,12 @@ implement control_law (sensors, actuators) = let
     else
       v
   end
-
+  
   implement control_apply$filter<roll> (r, roll) = cap (roll, 0.6)
-  implement control_apply$filter<pitch> (r, pitch) = cap (pitch, 0.6)
+  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.6)
 
-  val aileron = control_apply<roll> (r, sensors.phi)
-  val elevator = control_apply<pitch> (p, sensors.theta)
+  val aileron = pid_apply<roll> (r, sensors.phi)
+  val elevator = pid_apply<pitch> (p, sensors.theta)
 in
   actuators.aileron := aileron;
   actuators.elevator := elevator

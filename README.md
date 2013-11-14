@@ -28,6 +28,16 @@ your FlightGear protocol directory. This is located in
 
     /path/to/flightgear/data/Protocol/
 
+If you would like to see a full list of properties available, go to the
+following page with a web browser after you start FlightGear with the
+included shell script.
+  
+    http://localhost:5500
+
+This will display the whole property tree. Any property listed here may
+be specified in either the input or output protocol you provide to 
+FlightGear.
+
 3.  Compile the  control  program  with make.  Note,  a working  [ATS2
 compiler](http://www.ats-lang.org) is required.
 
@@ -41,9 +51,9 @@ and then when you want the control software to take over, run
 
 The shell script starts the aircraft at a few thousand feet so you don't
 have to worry about lift off. Just start the engine by pressing "s" and
-then adjusting the throttle with Page Up. You can press "Tab" to adjust
-the controls so that your mouse will control the elevators, ailerons, and
-rudders.
+then adjusting the throttle with Page Up/Page Down. You can press "Tab" 
+to adjust the controls so that your mouse will control the elevators, 
+ailerons, and rudders.
 
 ## Control Laws
 
@@ -63,6 +73,9 @@ identify each plant that is controlled.
 
   fun{tk:tkind}
   update: (pcontrol(tk), reference: double): double
+
+In this example we only wish to control the roll and pitch of the
+aircraft.
 
 # Demo
 
