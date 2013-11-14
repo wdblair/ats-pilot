@@ -39,6 +39,12 @@ and then when you want the control software to take over, run
 
     ./control
 
+The shell script starts the aircraft at a few thousand feet so you don't
+have to worry about lift off. Just start the engine by pressing "s" and
+then adjusting the throttle with Page Up. You can press "Tab" to adjust
+the controls so that your mouse will control the elevators, ailerons, and
+rudders.
+
 ## Control Laws
 
 What makes a control law?
