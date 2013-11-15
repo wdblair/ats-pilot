@@ -58,10 +58,6 @@ assume pid (tk:tkind) = @{
   last_value= double
 }
 
-val SCALING_FACTOR = 65536
-val INT_MAX = $extval (int, "INT_MAX")
-val MAX_I_TERM = $extval (int, "INT_MAX")
-
 fun {plant:tkind}
 make_pid (
   p: &pid(plant)? >> pid(plant), target: double,
@@ -72,7 +68,7 @@ make_pid (
   p.k_i    := k_i;
   p.k_d    := k_d;
   p.error_sum := 0.0;
-  p.max_sum := 1.0;
+  p.max_sum := 2.0;
   p.last_value := 0.0;
 end
 
@@ -155,21 +151,21 @@ implement control_law (sensors, actuators) = let
   var p: pid (pitch)
   
   val () = begin
-    make_pid<roll> (r, 0.0, ~0.07, 0.025, 0.06);
-    make_pid<pitch> (p, 5.0, 0.05, 0.005, 0.012);
+    make_pid<roll> (r, 0.0, ~0.05, 0.005, 0.009);
+    make_pid<pitch> (p, 5.0, 0.05, 0.002, 0.005);
   end
   
   fun cap (v: double, limit: double): double = let
     val absv = fabs (v)
   in
     if absv > limit then
-      (v / absv) * 0.6
+      (v / absv) * limit
     else
       v
   end
   
-  implement control_apply$filter<roll> (r, roll) = cap (roll, 0.6)
-  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.6)
+  implement control_apply$filter<roll> (r, roll) = cap (roll, 0.7)
+  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.7)
 
   val aileron = pid_apply<roll> (r, sensors.phi)
   val elevator = pid_apply<pitch> (p, sensors.theta)
