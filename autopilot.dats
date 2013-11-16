@@ -43,7 +43,6 @@ abst@ype pid (tk:tkind) = @{
   k_i= double, 
   k_d= double,
   error_sum= double,
-  max_error= double,  
   max_sum= double,
   last_value= double
 }
@@ -87,9 +86,7 @@ fun {plant: tkind}
 pid_apply (
   p: &pid(plant), process: double
 ): double = let
-  val () = println! ("Process", process)
   val error = process - p.target
-  val () = println! ("Error: ", error)
   
   val proportional = p.k_p * error
   
@@ -112,28 +109,27 @@ pid_apply (
   end 
   ): double
   
-  val () = println! ("Integral:", integral)
-  
   val derivative = let
     val diff = process - p.last_value
   in
     p.last_value := process;
     p.k_d * diff
   end
-  
-  val () = println! ("Proportional:", proportional)
 in
   control_apply$filter<plant> (p, (proportional + integral) + derivative)
 end
 
 extern
-fun control_law (&FGNetFDM, &FGNetCtrls): void = "ext#"
+fun control_law (&FGNetFDM, &FGNetCtrls, &(@[double][256])): void = "ext#"
 
 (*
   The two "plants" we'll control in this example
 *)
 stacst roll  : tkind
 stacst pitch : tkind
+
+extern
+castfn c2g1i {c:int} (char c): int c
 
 (*
     In this  simple set up,  our target  values never change.  This is
@@ -146,13 +142,16 @@ stacst pitch : tkind
     A particular function or goal translates to target values for each
     control law.
 *)
-implement control_law (sensors, actuators) = let
+implement control_law (sensors, actuators, targets) = let
   var r: pid (roll)
   var p: pid (pitch)
   
+  val troll  = targets.[c2g1i('r')]
+  val tpitch = targets.[c2g1i('p')]
+  
   val () = begin
-    make_pid<roll> (r, 0.0, ~0.05, 0.005, 0.009);
-    make_pid<pitch> (p, 5.0, 0.05, 0.002, 0.005);
+    make_pid<roll> (r, troll, ~0.05, ~0.005, ~0.009);
+    make_pid<pitch> (p, tpitch, 0.05, 0.002, 0.005);
   end
   
   fun cap (v: double, limit: double): double = let

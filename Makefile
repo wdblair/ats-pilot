@@ -7,7 +7,7 @@ LDFLAGS = -Wl
 all: control
 
 control: control.o autopilot.o
-	$(CC) $(CCFLAGS) -o $@ $^
+	$(CC) $(CCFLAGS) -o $@ $^ -ltermbox
 
 
 control.o: control.cpp
