@@ -4,34 +4,20 @@
   A simple autopilot that aims to keep an aircraft steady.
 *)
 
-%{^
-#include "net_ctrls.h"
-#include "net_fdm.h"
-
-#include <limits.h>
-#include <stdint.h>
-#include <math.h>
-
-typedef struct FGNetFDM FGNetFDM ;
-typedef struct FGNetCtrls FGNetCtrls ;
-
-%}
-
 #define ATS_DYNLOADFLAG 0
 
 #include "share/atspre_staload.hats"
 
-extern fun fabs(double): double = "mac#"
+%{^
+#include <math.h>
+%}
 
-typedef FGNetFDM = $extype_struct "FGNetFDM" of {
-  phi= double,
-  theta= double
-}
+staload "net.sats"
+staload "container.sats"
 
-typedef FGNetCtrls = $extype_struct "FGNetCtrls" of {
-  aileron= double,
-  elevator= double
-}
+staload _ = "container.dats"
+
+extern fun fabs (double): double = "mac#"
 
 abst@ype pcontrol (tk:tkind) = @{target=double, k=double}
 
@@ -120,16 +106,13 @@ in
 end
 
 extern
-fun control_law (&FGNetFDM, &FGNetCtrls, &(@[double][256])): void = "ext#"
+fun control_law (&FGNetFDM, &FGNetCtrls, &(container(double))): void = "ext#"
 
 (*
   The two "plants" we'll control in this example
 *)
 stacst roll  : tkind
 stacst pitch : tkind
-
-extern
-castfn c2g1i {c:int} (char c): int c
 
 (*
     In this  simple set up,  our target  values never change.  This is
@@ -146,8 +129,8 @@ implement control_law (sensors, actuators, targets) = let
   var r: pid (roll)
   var p: pid (pitch)
   
-  val troll  = targets.[c2g1i('r')]
-  val tpitch = targets.[c2g1i('p')]
+  val troll  = targets['r']
+  val tpitch = targets['p']
   
   val () = begin
     make_pid<roll> (r, troll, ~0.05, ~0.005, ~0.009);

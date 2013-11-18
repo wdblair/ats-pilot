@@ -29,7 +29,7 @@
  */
 
 #define RESERVED_SPACE 25
-const uint32_t FG_NET_CTRLS_VERSION = 27;
+// const uint32_t FG_NET_CTRLS_VERSION = 27;
 
 
 // Define a structure containing the control parameters

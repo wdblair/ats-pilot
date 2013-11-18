@@ -6,7 +6,7 @@ LDFLAGS = -Wl
 
 all: control
 
-control: control.o autopilot.o
+control: control.o autopilot.o panel.o
 	$(CC) $(CCFLAGS) -o $@ $^ -ltermbox
 
 
@@ -16,5 +16,8 @@ control.o: control.cpp
 autopilot.o: autopilot.dats
 	patscc -c -O2 -o autopilot.o $<
 
+panel.o: panel.dats
+	patscc -c -O2 -o panel.o $<
+
 clean: 
-	rm control *.o *~
+	rm control *_dats.c *.o *~

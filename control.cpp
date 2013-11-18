@@ -16,6 +16,8 @@
 
 using namespace std;
 
+extern "C" void draw_table (int ,int, int, double *, FGNetFDM *);
+
 void err_sys (const char *msg) {
   perror (msg);
   exit (1);
@@ -167,57 +169,214 @@ void send (channel_t<T> &ch) {
 extern "C" 
 void control_law (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
 
-struct config {
-  unsigned int manual; /* Let the pilot fly the plane. */
+#define CMD_LEN 32
+
+struct command {
+    char *c;
+    char buf[CMD_LEN];
 };
 
-void update_display (double targets[256], struct config *c) {
+struct config {
+  unsigned int manual; /* Let the pilot fly the plane. */
+  unsigned int command_listen; /* Read characters as a command. */
+  struct command command;
+  unsigned int alert; /* The user should be alerted. */
+  string msg; /* A message to be displayed to the user. */
+};
+
+void draw_text (int x, int y, string text, uint16_t fg, uint16_t bg) {
+  int w = tb_width ();
+  int h = tb_height ();
+  
+  if (y >= h) {
+    return ;
+  }
+
+  for (int i = x, j = 0; j < text.length (); i++, j++) {
+    if (i >= w || i < 0) {
+      continue;
+    }
+
+    tb_change_cell (i, y, text[j], fg, bg);
+  }
+  
+  return ;
+}
+
+extern "C" 
+void draw_text_c (int x, int y, const char * text, uint16_t fg, uint16_t bg) {
+  int w = tb_width ();
+  int h = tb_height ();
+  
+  if (y >= h) {
+    return ;
+  }
+
+  for (int i = x, j = 0; j < strlen(text); i++, j++) {
+    if (i >= w || i < 0) {
+      continue;
+    }
+
+    tb_change_cell (i, y, text[j], fg, bg);
+  }
+  
+  return ;
+}
+
+void draw_horizontal_line (int x, int y, int len, uint16_t bg) {
+  int w = tb_width ();
+  int h = tb_height ();
+  
+  if (y >= h) {
+    return ;
+  }
+  
+  for (int i = x; i < len; i++ ) {
+    if (i >= w) {
+      break;
+    }
+    
+    tb_change_cell (i, y, ' ', TB_DEFAULT, bg);
+  }
+  
+  return ;
+}
+
+void append_char (struct command *cmd, char ch) {
+  if (cmd->c == &cmd->buf[CMD_LEN]) {
+    return;
+  }
+  *cmd->c++ = ch;
+  
+  return ;
+}
+
+void command_reset (struct command *cmd) {
+  cmd->c = cmd->buf;
+  memset (cmd->buf, 0, 32);
+}
+
+void command_back (struct command *cmd) {
+  *cmd->c = '\0';
+  cmd->c = max ((char*)cmd->buf, cmd->c - 1);
+}
+
+void publish_message (struct config *conf, string msg) {
+  conf->msg = msg;
+}
+
+void update_display (double targets[256], struct config *c, FGNetFDM *sensors) {
   int w = tb_width ();
   int h = tb_height ();
   struct tb_event ev;
-  
-  /* Look for an event */
+
+
   if (tb_peek_event (&ev, 10)) {
+    /* Clear any alerts after input */
+    c->alert = 0;
+
     switch (ev.type) {
     case TB_EVENT_KEY:
-      if (ev.key == TB_KEY_ESC) {
+      switch (ev.key) {
+      case TB_KEY_ESC:
         tb_shutdown ();
-        exit(0);  
-      }
-      
-      switch (ev.ch) {
-      case 'm':
+        exit (0);
+        break;
+      case TB_KEY_CTRL_A:
         c->manual ^= 1;
+        break;
+      case TB_KEY_CTRL_C:
+        c->command_listen ^= 1;
+        command_reset (&c->command);
+        break;
+      case TB_KEY_ENTER:
+        if (c->command_listen) { /* Parse the command */
+          char plant;
+          double t;
+
+          int match = sscanf (c->command.buf, "%c %lf", &plant, &t);
+          
+          if (match != 2) {
+            c->command_listen = 0;
+            command_reset (&c->command);
+            publish_message (c, "Incorrect format, user [plant] [target]");
+            c->alert = 1;
+            break;
+          }
+
+          /* Update the target for the plant */
+          targets[plant] = t;
+          
+          c->command_listen = 0;
+        }
+        break;
+      case TB_KEY_SPACE:
+        if (c->command_listen) {
+          append_char (&c->command, ' ');
+        }
+        break;
+      case TB_KEY_BACKSPACE:
+        tb_shutdown ();
+        exit (0);
+        
+        if (c->command_listen) {
+          
+          command_back (&c->command);
+        }
+        break;
+      default:
+        /* Add the character to the command */
+        if (c->command_listen) {
+          append_char (&c->command, ev.ch);
+        }
         break;
       }
     }
   }
-
+  
   tb_clear ();
 
-  /* Display a little toolbar */
-  for (int i = 0; i < w; i++) {
-    tb_change_cell (i, 0, ' ', TB_DEFAULT, TB_GREEN);
-  }
-  
+  draw_horizontal_line (0, 0, w, TB_GREEN);
+
   string title = "ATS Mission Control";
   int len = title.length();
 
-
-  if (w > len) {
-    for (int i = (w/2 - len/2), j = 0; j < len && i < w; i++, j++) {
-      tb_change_cell (i, 0, title[j], TB_DEFAULT, TB_GREEN);
-    }
-  }
-
+  /* Center the title */
+  draw_text ((w/2) - (len/2), 0, title, TB_DEFAULT, TB_GREEN);
+  
   /* Display Auto pilot status */
-  string autopilot_on = (!c->manual) ? "On" : "Off";
+  string autopilot_status = (!c->manual) ? "On" : "Off";
+  int bg = (!c->manual) ? TB_GREEN : TB_RED;
 
-  string autopilot_label = "Auto-Pilot: " + autopilot_on;
+  string autopilot_label = "Auto-Pilot: ";
 
-  for (int j = 0; j < autopilot_label.length (); j++) {
-    tb_change_cell (j, 1, autopilot_label[j], TB_DEFAULT, TB_DEFAULT);
+  int row = 2;
+  
+  draw_text (0, row, autopilot_label, TB_DEFAULT, TB_DEFAULT);
+  draw_text (autopilot_label.length(), row, autopilot_status, TB_DEFAULT, bg);
+  
+  if (c->command_listen) {
+    int bottom = h-1;
+    string cmd_label = "Command: ";
+    string cmd (c->command.buf);
+    
+    draw_horizontal_line (0, bottom, w, TB_GREEN);
+
+    draw_text (0, bottom, cmd_label, TB_DEFAULT, TB_GREEN);
+    draw_text (cmd_label.length(), bottom, cmd, TB_DEFAULT, TB_GREEN);
   }
+
+  if (c->alert) {
+    int bottom = h-1;
+    string label = "Error: ";
+    
+    draw_horizontal_line (0, bottom, w, TB_RED);
+    
+    draw_text (0, bottom, label, TB_DEFAULT, TB_RED);
+    draw_text (label.length(), bottom, c->msg, TB_DEFAULT, TB_RED);
+  }
+
+  draw_table (w, h, 5, targets, sensors);
 
   tb_present ();
   
@@ -227,7 +386,6 @@ void update_display (double targets[256], struct config *c) {
 int main () {
   static double targets[256];
   struct config conf = {.manual = 1};
-
   
   channel_t<FGNetCtrls> actuators;
   channel_t<FGNetFDM> sensors;
@@ -245,11 +403,11 @@ int main () {
 
   while (1) {
     int ready;
-    update_display (targets, &conf);
+    update_display (targets, &conf, &sensors.msg);
     
     ready = receive (sensors);
     
-    if( ready == 0 && !conf.manual) {
+    if(ready == 0 && !conf.manual) {
       control_law (&sensors.msg, &actuators.msg, targets);
       send (actuators);
     }
