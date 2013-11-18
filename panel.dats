@@ -72,31 +72,26 @@ implement get_sensor<roll> (sensors) = sensors.phi
 implement get_sensor<pitch> (sensors) = sensors.theta
 
 implement draw_table (w, h, y, targets, sensors) = let
-  // TODO: Turn this into a list
   val roll = @{
     id= 'r',
     label= "Roll"
   }
-  
   val pitch = @{
     id= 'p',
     label= "Pitch"
   }
-  
   var buf = @[char][128]('\0')
   val _ = $extfcall (void,
     "snprintf", buf, 128, "|%-8s|%8s|%8s|%8s|", "Plant", "Target", "Current", "Error"
   );
   
-  fun draw_separator (y: int, buffer: &(@[char][128])): void = let
-  in
+  fun draw_separator (y: int): void =
     draw_text_c_string (0, y, "|++++++++|++++++++|++++++++|++++++++|", TB_DEFAULT, TB_DEFAULT)
-  end
-  
+
 in
   draw_text_c (0, y, buf, TB_DEFAULT, TB_DEFAULT); (* Heading *)
-  draw_separator (y+1, buf);
+  draw_separator (y+1);
   draw_row<roll> (roll, y+2, targets, sensors);
-  draw_separator (y+3, buf);
+  draw_separator (y+3);
   draw_row<pitch> (pitch, y+4, targets, sensors)
 end
