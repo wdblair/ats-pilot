@@ -16,7 +16,7 @@
 
 using namespace std;
 
-extern "C" void draw_table (int ,int, int, double *, FGNetFDM *);
+extern "C" void draw_table (int ,int, int, double *, FGNetFDM *, FGNetCtrls *);
 
 void err_sys (const char *msg) {
   perror (msg);
@@ -265,7 +265,8 @@ void publish_message (struct config *conf, string msg) {
   conf->msg = msg;
 }
 
-void update_display (double targets[256], struct config *c, FGNetFDM *sensors) {
+void update_display (double targets[256], struct config *c, 
+                     FGNetFDM *sensors, FGNetCtrls *actuators) {
   int w = tb_width ();
   int h = tb_height ();
   struct tb_event ev;
@@ -376,7 +377,7 @@ void update_display (double targets[256], struct config *c, FGNetFDM *sensors) {
     draw_text (label.length(), bottom, c->msg, TB_DEFAULT, TB_RED);
   }
 
-  draw_table (w, h, 5, targets, sensors);
+  draw_table (w, h, 5, targets, sensors, actuators);
 
   tb_present ();
   
@@ -403,7 +404,7 @@ int main () {
 
   while (1) {
     int ready;
-    update_display (targets, &conf, &sensors.msg);
+    update_display (targets, &conf, &sensors.msg, &actuators.msg);
     
     ready = receive (sensors);
     

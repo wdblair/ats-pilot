@@ -29,6 +29,9 @@ extern
 fun {tk:tkind}
 get_sensor (&FGNetFDM): double
 
+extern
+fun {tk:tkind}
+get_actuator (&FGNetCtrls): double
 
 extern
 fun draw_text_c {n:int} (
@@ -45,21 +48,25 @@ fun tm_change_cell (x: int, y: int, ch: char, fg: int, bg: int): void = "ext#"
 
 extern
 fun draw_table (
-  width: int, height: int, y: int, targets: &(container (double)), sensors: &FGNetFDM
+  width: int, height: int, y: int, targets: &(container (double)), 
+  sensors: &FGNetFDM, actuators: &FGNetCtrls
 ): void = "ext#"
 
 val TB_DEFAULT = $extval(int, "TB_DEFAULT")
 
 fun {tk:tkind} 
-draw_row (p: plant(tk), y:int, targets: &(container (double)), sensors: &FGNetFDM): void = let
+draw_row (
+  p: plant(tk), y:int, targets: &(container (double)),  sensors: &FGNetFDM, actuators: &FGNetCtrls
+): void = let
   var buf = @[char][128]('\0')
   val label = p.label
   val id = p.id
   val target = targets[id]
   val sensor = get_sensor<tk> (sensors)
   val error = target - sensor
-  val _ = $extfcall (int, 
-    "snprintf", buf, 128, "|%-8s|%8.2f|%8.2f|%8.2f|", label, target, sensor, error
+  val output = get_actuator<tk> (actuators)
+  val () = $extfcall (void, 
+    "snprintf", buf, 128, "|%-8s|%8.2f|%8.2f|%8.2f|%8.2f|", label, target, sensor, error, output
   )
 in
   draw_text_c (0, y, buf, TB_DEFAULT, TB_DEFAULT)
@@ -71,7 +78,10 @@ stacst pitch : tkind
 implement get_sensor<roll> (sensors) = sensors.phi
 implement get_sensor<pitch> (sensors) = sensors.theta
 
-implement draw_table (w, h, y, targets, sensors) = let
+implement get_actuator<roll> (actuators) = actuators.aileron
+implement get_actuator<pitch> (actuators) = actuators.elevator
+
+implement draw_table (w, h, y, targets, sensors, actuators) = let
   val roll = @{
     id= 'r',
     label= "Roll"
@@ -82,16 +92,16 @@ implement draw_table (w, h, y, targets, sensors) = let
   }
   var buf = @[char][128]('\0')
   val _ = $extfcall (void,
-    "snprintf", buf, 128, "|%-8s|%8s|%8s|%8s|", "Plant", "Target", "Current", "Error"
-  );
+    "snprintf", buf, 128, "|%-8s|%8s|%8s|%8s|%8s|", "Plant", "Target", "Input", "Error", "Output"
+  )
   
   fun draw_separator (y: int): void =
-    draw_text_c_string (0, y, "|++++++++|++++++++|++++++++|++++++++|", TB_DEFAULT, TB_DEFAULT)
+    draw_text_c_string (0, y, "|++++++++|++++++++|++++++++|++++++++|+++++++|", TB_DEFAULT, TB_DEFAULT)
 
 in
   draw_text_c (0, y, buf, TB_DEFAULT, TB_DEFAULT); (* Heading *)
   draw_separator (y+1);
-  draw_row<roll> (roll, y+2, targets, sensors);
+  draw_row<roll> (roll, y+2, targets, sensors, actuators);
   draw_separator (y+3);
-  draw_row<pitch> (pitch, y+4, targets, sensors)
+  draw_row<pitch> (pitch, y+4, targets, sensors, actuators)
 end
