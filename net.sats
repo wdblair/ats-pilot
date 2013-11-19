@@ -15,4 +15,3 @@ typedef FGNetCtrls = $extype_struct "FGNetCtrls" of {
   aileron= double,
   elevator= double
 }
-

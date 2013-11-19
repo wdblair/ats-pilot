@@ -6,6 +6,13 @@
       <var_separator>tab</var_separator>
 
       <chunk>
+         <name>/orientation/roll-deg</name>
+         <node>/orientation/roll-deg</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+
+      <chunk>
          <name>/orientation/pitch-deg</name>
          <node>/orientation/pitch-deg</node>
          <type>float</type>

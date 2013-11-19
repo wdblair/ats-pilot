@@ -133,8 +133,8 @@ implement control_law (sensors, actuators, targets) = let
   val tpitch = targets['p']
   
   val () = begin
-    make_pid<roll> (r, troll, ~0.05, ~0.005, ~0.009);
-    make_pid<pitch> (p, tpitch, 0.1, 0.008, 0.005);
+    make_pid<roll> (r, troll, ~0.05 * 0.65, 0.005, 0.0004);
+    make_pid<pitch> (p, tpitch, 0.03, 0.004, 0.006);
   end
   
   fun cap (v: double, limit: double): double = let
@@ -146,8 +146,8 @@ implement control_law (sensors, actuators, targets) = let
       v
   end
   
-  implement control_apply$filter<roll> (r, roll) = cap (roll, 1.0)
-  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 1.0)
+  implement control_apply$filter<roll> (r, roll) = cap (roll, 0.6)
+  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.8)
 
   val aileron = pid_apply<roll> (r, sensors.phi)
   val elevator = pid_apply<pitch> (p, sensors.theta)
