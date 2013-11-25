@@ -74,12 +74,16 @@ end
 
 stacst roll  : tkind
 stacst pitch : tkind
+stacst yaw   : tkind
 
 implement get_sensor<roll> (sensors) = sensors.phi
 implement get_sensor<pitch> (sensors) = sensors.theta
+implement get_sensor<yaw> (sensors) = sensors.psi
+
 
 implement get_actuator<roll> (actuators) = actuators.aileron
 implement get_actuator<pitch> (actuators) = actuators.elevator
+implement get_actuator<yaw> (actuators) = actuators.rudder
 
 implement draw_table (w, h, y, targets, sensors, actuators) = let
   val roll = @{
@@ -90,6 +94,10 @@ implement draw_table (w, h, y, targets, sensors, actuators) = let
     id= 'p',
     label= "Pitch"
   }
+  val yaw = @{
+    id= 'y',
+    label= "Yaw"
+  } 
   var buf = @[char][128]('\0')
   val _ = $extfcall (void,
     "snprintf", buf, 128, "|%-8s|%8s|%8s|%8s|%8s|", "Plant", "Target", "Input", "Error", "Output"
@@ -103,5 +111,7 @@ in
   draw_separator (y+1);
   draw_row<roll> (roll, y+2, targets, sensors, actuators);
   draw_separator (y+3);
-  draw_row<pitch> (pitch, y+4, targets, sensors, actuators)
+  draw_row<pitch> (pitch, y+4, targets, sensors, actuators);
+  draw_separator (y+5);
+  draw_row<yaw> (yaw, y+6, targets, sensors, actuators)
 end

@@ -19,6 +19,13 @@
          <type>float</type>
          <format>%f</format>
        </chunk>
+
+      <chunk>
+         <name>/controls/flight/rudder</name>
+         <node>/controls/flight/rudder</node>
+         <type>float</type>
+         <format>%f</format>
+       </chunk>
        
    </input>   
    

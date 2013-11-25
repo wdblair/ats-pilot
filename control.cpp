@@ -88,9 +88,8 @@ void net_parse (FGNetFDM *net, const char *data) {
 
 void net_serialize (FGNetCtrls *net, char *data, size_t datalen) {
   
-  snprintf (data, datalen, "%f\t%f\n", net->aileron, net->elevator);
+  snprintf (data, datalen, "%f\t%f\t%f\n", net->aileron, net->elevator, net->rudder);
   
-  /* cout << "Control: " <<  data << endl; */
   return ;
 }
 

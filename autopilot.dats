@@ -109,10 +109,11 @@ extern
 fun control_law (&FGNetFDM, &FGNetCtrls, &(container(double))): void = "ext#"
 
 (*
-  The two "plants" we'll control in this example
+  The three "plants" we'll control in this example
 *)
 stacst roll  : tkind
 stacst pitch : tkind
+stacst yaw   : tkind
 
 (*
     In this  simple set up,  our target  values never change.  This is
@@ -128,13 +129,22 @@ stacst pitch : tkind
 implement control_law (sensors, actuators, targets) = let
   var r: pid (roll)
   var p: pid (pitch)
+  var y: pid (yaw)
   
   val troll  = targets['r']
   val tpitch = targets['p']
+  val tyaw   = targets['y']
   
   val () = begin
     make_pid<roll> (r, troll, ~0.03, 0.005, 0.0004);
     make_pid<pitch> (p, tpitch, 0.05, 0.004, 0.006);
+    (* 
+      There's an issue with adjusting yaw since we often
+      go around in a circle. For example 359 is close to 0,
+      but this controller flies to the left to go all the way
+      back to zero instead of adjusting slightly to the right.
+    *)
+    make_pid<yaw> (y, tyaw, ~0.06, 0.006, 0.0004);
   end
   
   fun cap (v: double, limit: double): double = let
@@ -148,10 +158,14 @@ implement control_law (sensors, actuators, targets) = let
   
   implement control_apply$filter<roll> (r, roll) = cap (roll, 0.6)
   implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.8)
+  implement control_apply$filter<yaw> (y, yaw) = cap (yaw, 0.8)
+
 
   val aileron = pid_apply<roll> (r, sensors.phi)
   val elevator = pid_apply<pitch> (p, sensors.theta)
+  val rudder = pid_apply<yaw> (y, sensors.psi)
 in
   actuators.aileron := aileron;
-  actuators.elevator := elevator
+  actuators.elevator := elevator;
+  actuators.rudder := rudder
 end

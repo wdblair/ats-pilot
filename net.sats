@@ -8,10 +8,12 @@ typedef struct FGNetCtrls FGNetCtrls ;
 
 typedef FGNetFDM = $extype_struct "FGNetFDM" of {
   phi= double,
-  theta= double
+  theta= double,
+  psi= double
 }
 
 typedef FGNetCtrls = $extype_struct "FGNetCtrls" of {
   aileron= double,
-  elevator= double
+  elevator= double,
+  rudder= double
 }
