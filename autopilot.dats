@@ -133,8 +133,8 @@ implement control_law (sensors, actuators, targets) = let
   val tpitch = targets['p']
   
   val () = begin
-    make_pid<roll> (r, troll, ~0.05 * 0.65, 0.005, 0.0004);
-    make_pid<pitch> (p, tpitch, 0.03, 0.004, 0.006);
+    make_pid<roll> (r, troll, ~0.03, 0.005, 0.0004);
+    make_pid<pitch> (p, tpitch, 0.05, 0.004, 0.006);
   end
   
   fun cap (v: double, limit: double): double = let
