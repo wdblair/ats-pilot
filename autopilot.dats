@@ -115,17 +115,7 @@ stacst roll  : tkind
 stacst pitch : tkind
 stacst yaw   : tkind
 
-(*
-    In this  simple set up,  our target  values never change.  This is
-    very  unrealistic because  autonomous vehicles  have all  sorts of
-    states  they may  be in  at  any point.  Our goal  here is  steady
-    flight, but you  can imagine how our target values for each plant
-    would change if our goal was to sustain a banked turn or decrease
-    our altitude.
-    
-    A particular function or goal translates to target values for each
-    control law.
-*)
+
 implement control_law (sensors, actuators, targets) = let
   var r: pid (roll)
   var p: pid (pitch)
@@ -144,7 +134,7 @@ implement control_law (sensors, actuators, targets) = let
       but this controller flies to the left to go all the way
       back to zero instead of adjusting slightly to the right.
     *)
-    make_pid<yaw> (y, tyaw, ~0.06, 0.006, 0.0004);
+    make_pid<yaw> (y, tyaw, ~0.1, 0.005, 0.0005);
   end
   
   fun cap (v: double, limit: double): double = let
@@ -158,8 +148,7 @@ implement control_law (sensors, actuators, targets) = let
   
   implement control_apply$filter<roll> (r, roll) = cap (roll, 0.6)
   implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.8)
-  implement control_apply$filter<yaw> (y, yaw) = cap (yaw, 0.8)
-
+  implement control_apply$filter<yaw> (y, yaw) = cap (yaw, 0.4)
 
   val aileron = pid_apply<roll> (r, sensors.phi)
   val elevator = pid_apply<pitch> (p, sensors.theta)
