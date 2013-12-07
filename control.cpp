@@ -165,8 +165,10 @@ void send (channel_t<T> &ch) {
   return;
 }
 
-extern "C" 
-void control_law (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
+extern "C" {
+  void control_setup ();
+  void control_law (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
+}
 
 #define CMD_LEN 32
 
@@ -399,6 +401,8 @@ int main () {
   targets['r'] = 0.0;
   targets['p'] = 5.0;
 
+  control_setup ();
+  
   tb_init ();
 
   while (1) {

@@ -53,7 +53,7 @@ make_pid (
   p.k_i    := k_i;
   p.k_d    := k_d;
   p.error_sum := 0.0;
-  p.max_sum := 2.0;
+  p.max_sum := 3.0;
   p.last_value := 0.0;
 end
 
@@ -85,7 +85,7 @@ pid_apply (
       }
     else if next_sum < ~p.max_sum then
       p.k_i * p.max_sum where {
-        val _ = p.error_sum := ~p.max_sum;      
+        val _ = p.error_sum := ~p.max_sum;
       }
     else let
       val () = p.error_sum := next_sum
@@ -106,6 +106,9 @@ in
 end
 
 extern
+fun control_setup (): void = "ext#"
+
+extern
 fun control_law (&FGNetFDM, &FGNetCtrls, &(container(double))): void = "ext#"
 
 (*
@@ -115,27 +118,56 @@ stacst roll  : tkind
 stacst pitch : tkind
 stacst yaw   : tkind
 
+typedef controllers = @{
+  roll= pid (roll),
+  pitch= pid (pitch),
+  yaw= pid (yaw)
+}
+
+local
+
+  extern
+  praxi{a:t@ype} static_initialized_lemma (&a? >> a): void
+
+  var control : controllers
+  
+  prval () = static_initialized_lemma (control)
+  
+in
+  val control = ref_make_viewptr {controllers} (
+    view@(control) | addr@(control)
+  )
+end
+
+implement control_setup () = {
+  val (vbox (pf) | ctrl) = ref_get_viewptr (control)
+  val () = $effmask_ref (
+    begin
+      make_pid<roll> (ctrl->roll, 0.0, ~0.02, 0.01, 0.005);
+      make_pid<pitch> (ctrl->pitch, 0.0, 0.03, 0.004, 0.01);
+      (*
+        There's an issue with adjusting yaw since we often
+        go around in a circle. For example 359 is close to 0,
+        but this controller flies to the left to go all the way
+        back to zero instead of adjusting slightly to the right.
+      *)
+      make_pid<yaw> (ctrl->yaw, 0.0, ~0.1, 0.0, 0.0);
+  end
+  )
+}
 
 implement control_law (sensors, actuators, targets) = let
-  var r: pid (roll)
-  var p: pid (pitch)
-  var y: pid (yaw)
+  val (vbox (pf) | ctrl) = ref_get_viewptr (control)
+    
+  val troll  = $effmask_ref (targets['r'])
+  val tpitch = $effmask_ref (targets['p'])
+  val tyaw   = $effmask_ref (targets['y'])
   
-  val troll  = targets['r']
-  val tpitch = targets['p']
-  val tyaw   = targets['y']
-  
-  val () = begin
-    make_pid<roll> (r, troll, ~0.03, 0.005, 0.0004);
-    make_pid<pitch> (p, tpitch, 0.05, 0.004, 0.006);
-    (* 
-      There's an issue with adjusting yaw since we often
-      go around in a circle. For example 359 is close to 0,
-      but this controller flies to the left to go all the way
-      back to zero instead of adjusting slightly to the right.
-    *)
-    make_pid<yaw> (y, tyaw, ~0.1, 0.005, 0.0005);
-  end
+  val () = $effmask_ref (begin
+    ctrl->roll.target := troll;
+    ctrl->pitch.target := tpitch;
+    ctrl->yaw.target := tyaw
+  end)
   
   fun cap (v: double, limit: double): double = let
     val absv = fabs (v)
@@ -146,15 +178,15 @@ implement control_law (sensors, actuators, targets) = let
       v
   end
   
-  implement control_apply$filter<roll> (r, roll) = cap (roll, 0.6)
-  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.8)
+  implement control_apply$filter<roll> (r, roll) = cap (roll, 0.5)
+  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.5)
   implement control_apply$filter<yaw> (y, yaw) = cap (yaw, 0.4)
 
-  val aileron = pid_apply<roll> (r, sensors.phi)
-  val elevator = pid_apply<pitch> (p, sensors.theta)
-  val rudder = pid_apply<yaw> (y, sensors.psi)
+  val aileron = $effmask_ref (pid_apply<roll> (ctrl->roll, sensors.phi))
+  val elevator = $effmask_ref (pid_apply<pitch> (ctrl->pitch, sensors.theta))
+//  val rudder = $effmask_ref (pid_apply<yaw> (ctrl->yaw, sensors.psi))
 in
   actuators.aileron := aileron;
   actuators.elevator := elevator;
-  actuators.rudder := rudder
+  actuators.rudder := 0.0
 end
