@@ -77,19 +77,16 @@ Sendto(int fd, const void *ptr, size_t nbytes, int flags,
 void net_parse (FGNetFDM *net, const char *data) {
   int i;
 
-  sscanf (data, "%f %f %f %f %f %f %f %f %f\n",
-          &(net->phi), &(net->theta), &(net->psi),
-          &(net->phidot), &(net->thetadot), &(net->psidot), 
-          &(net->A_X_pilot), &(net->A_Y_pilot), &(net->A_Z_pilot)
-          );
+  sscanf (data, "R=%f\nP=%f\nH=%f\n",
+          &(net->phi), &(net->theta), &(net->psi));
   
   return ;
 }
 
 void net_serialize (FGNetCtrls *net, char *data, size_t datalen) {
   
-  snprintf (data, datalen, "%f\t%f\t%f\n", net->aileron, net->elevator, net->rudder);
-  
+  snprintf (data, datalen, "%f\t%f\t%f\t%d\n",
+            net->aileron, net->elevator, net->rudder, net->starter_power[0]);
   return ;
 }
 
@@ -291,6 +288,9 @@ void update_display (double targets[256], struct config *c,
         c->command_listen ^= 1;
         command_reset (&c->command);
         break;
+      case TB_KEY_CTRL_V:
+        actuators->starter_power[0] = 1;
+        break;
       case TB_KEY_ENTER:
         if (c->command_listen) { /* Parse the command */
           char plant;
@@ -407,6 +407,9 @@ int main () {
 
   while (1) {
     int ready;
+    
+    actuators.msg.starter_power[1] = 0; //default is to zero out the starter.
+    
     update_display (targets, &conf, &sensors.msg, &actuators.msg);
     
     ready = receive (sensors);

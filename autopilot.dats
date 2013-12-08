@@ -19,10 +19,6 @@ staload _ = "container.dats"
 
 extern fun fabs (double): double = "mac#"
 
-abst@ype pcontrol (tk:tkind) = @{target=double, k=double}
-
-assume pcontrol (tk:tkind) = @{target=double, k=double}
-
 abst@ype pid (tk:tkind) = @{
   target= double,
   k_p= double,
@@ -143,7 +139,7 @@ implement control_setup () = {
   val (vbox (pf) | ctrl) = ref_get_viewptr (control)
   val () = $effmask_ref (
     begin
-      make_pid<roll> (ctrl->roll, 0.0, ~0.02, 0.01, 0.005);
+      make_pid<roll> (ctrl->roll, 0.0, ~0.025, 0.018, 0.009);
       make_pid<pitch> (ctrl->pitch, 0.0, 0.03, 0.004, 0.01);
       (*
         There's an issue with adjusting yaw since we often
@@ -151,10 +147,23 @@ implement control_setup () = {
         but this controller flies to the left to go all the way
         back to zero instead of adjusting slightly to the right.
       *)
-      make_pid<yaw> (ctrl->yaw, 0.0, ~0.1, 0.0, 0.0);
+      make_pid<yaw> (ctrl->yaw, 0.0, ~0.07, 0.045, 0.012);
   end
   )
 }
+
+fun cap (v: double, limit: double): double = let
+  val absv = fabs (v)
+in
+  if absv > limit then
+    (v / absv) * limit
+  else
+    v
+end
+
+implement control_apply$filter<roll> (r, roll) = cap (roll, 0.8)
+implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 1.0)
+implement control_apply$filter<yaw> (y, yaw) = cap (yaw, 0.8)
 
 implement control_law (sensors, actuators, targets) = let
   val (vbox (pf) | ctrl) = ref_get_viewptr (control)
@@ -169,24 +178,11 @@ implement control_law (sensors, actuators, targets) = let
     ctrl->yaw.target := tyaw
   end)
   
-  fun cap (v: double, limit: double): double = let
-    val absv = fabs (v)
-  in
-    if absv > limit then
-      (v / absv) * limit
-    else
-      v
-  end
-  
-  implement control_apply$filter<roll> (r, roll) = cap (roll, 0.5)
-  implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 0.5)
-  implement control_apply$filter<yaw> (y, yaw) = cap (yaw, 0.4)
-
   val aileron = $effmask_ref (pid_apply<roll> (ctrl->roll, sensors.phi))
   val elevator = $effmask_ref (pid_apply<pitch> (ctrl->pitch, sensors.theta))
-//  val rudder = $effmask_ref (pid_apply<yaw> (ctrl->yaw, sensors.psi))
+  val rudder = $effmask_ref (pid_apply<yaw> (ctrl->yaw, sensors.psi))
 in
   actuators.aileron := aileron;
   actuators.elevator := elevator;
-  actuators.rudder := 0.0
+  actuators.rudder := rudder
 end

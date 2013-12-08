@@ -5,7 +5,7 @@
    <input>
       <line_separator>newline</line_separator>
       <var_separator>tab</var_separator>
- 
+      
       <chunk>
          <name>/controls/flight/aileron</name>
          <node>/controls/flight/aileron</node>
@@ -20,13 +20,19 @@
          <format>%f</format>
        </chunk>
 
-      <chunk>
+       <chunk>
          <name>/controls/flight/rudder</name>
          <node>/controls/flight/rudder</node>
          <type>float</type>
          <format>%f</format>
        </chunk>
-       
+
+       <chunk>
+         <name>/engines/engine/starter</name>
+         <node>/engines/engine/starter</node>
+         <type>bool</type>
+         <format>%d</format>
+       </chunk>
    </input>   
    
 </generic>
