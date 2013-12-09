@@ -104,7 +104,7 @@ implement draw_table (w, h, y, targets, sensors, actuators) = let
   )
   
   fun draw_separator (y: int): void =
-    draw_text_c_string (0, y, "|++++++++|++++++++|++++++++|++++++++|+++++++|", TB_DEFAULT, TB_DEFAULT)
+    draw_text_c_string (0, y, "|++++++++|++++++++|++++++++|++++++++|++++++++|", TB_DEFAULT, TB_DEFAULT)
 
 in
   draw_text_c (0, y, buf, TB_DEFAULT, TB_DEFAULT); (* Heading *)

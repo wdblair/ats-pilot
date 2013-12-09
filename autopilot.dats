@@ -12,8 +12,10 @@
 #include <math.h>
 %}
 
-staload "net.sats"
-staload "container.sats"
+staload "./net.sats"
+staload "./container.sats"
+
+staload "./autopilot.sats"
 
 staload _ = "container.dats"
 
@@ -41,15 +43,15 @@ assume pid (tk:tkind) = @{
 
 fun {plant:tkind}
 make_pid (
-  p: &pid(plant)? >> pid(plant), target: double,
+  p: &pid(plant)? >> pid(plant), max_sum: double,
   k_p: double, k_i: double, k_d: double
 ): void = begin
-  p.target := target;
+  p.target := 0.0;
   p.k_p    := k_p;
   p.k_i    := k_i;
   p.k_d    := k_d;
   p.error_sum := 0.0;
-  p.max_sum := 3.0;
+  p.max_sum := max_sum;
   p.last_value := 0.0;
 end
 
@@ -114,10 +116,16 @@ stacst roll  : tkind
 stacst pitch : tkind
 stacst yaw   : tkind
 
+(*
+  A cascading controller that uses pitch to control speed
+*)
+stacst speed : tkind
+
 typedef controllers = @{
   roll= pid (roll),
   pitch= pid (pitch),
-  yaw= pid (yaw)
+  yaw= pid (yaw),
+  speed= pid (speed)
 }
 
 local
@@ -135,19 +143,40 @@ in
   )
 end
 
+
+(* ****** ***** *)
+
+assume sensors = ref (FGNetFDM)
+assume actuators = '{
+  ctrls = ref (FGNetCtrls)
+  targets = ref (container(double))
+}
+
+assume thread = ref( @(stream (bool), event) )
+
+implement trigger_takeoff (input, output, targets) = let
+  val sensors = ref<FGNetFDM> (input)
+in
+  takeoff (sensors, actuators)
+end
+
+(* ****** ***** *)
+
 implement control_setup () = {
   val (vbox (pf) | ctrl) = ref_get_viewptr (control)
   val () = $effmask_ref (
     begin
-      make_pid<roll> (ctrl->roll, 0.0, ~0.025, 0.018, 0.009);
-      make_pid<pitch> (ctrl->pitch, 0.0, 0.03, 0.004, 0.01);
+      make_pid<roll> (ctrl->roll, 3.0, ~0.025, 0.018, 0.009);
+      make_pid<pitch> (ctrl->pitch, 3.0, 0.03, 0.004, 0.01);
       (*
         There's an issue with adjusting yaw since we often
         go around in a circle. For example 359 is close to 0,
         but this controller flies to the left to go all the way
         back to zero instead of adjusting slightly to the right.
       *)
-      make_pid<yaw> (ctrl->yaw, 0.0, ~0.07, 0.045, 0.012);
+      make_pid<yaw> (ctrl->yaw, 3.0, ~0.1, 0.045, 0.012);
+      
+      make_pid<speed> (ctrl->speed, 100.0, 0.1, 0.0, 0.0);
   end
   )
 }
@@ -165,6 +194,16 @@ implement control_apply$filter<roll> (r, roll) = cap (roll, 0.8)
 implement control_apply$filter<pitch> (p, pitch) = cap (pitch, 1.0)
 implement control_apply$filter<yaw> (y, yaw) = cap (yaw, 0.8)
 
+implement control_apply$filter<speed> (s, pitch) = 
+  (* Never try to go below 3 degrees *)
+  if pitch < 3.0 then
+    3.0
+  (* Never try to go above 15 degrees *)
+  else if pitch > 15.0 then
+    15.0
+  else
+    pitch
+    
 implement control_law (sensors, actuators, targets) = let
   val (vbox (pf) | ctrl) = ref_get_viewptr (control)
     

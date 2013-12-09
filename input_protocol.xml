@@ -28,12 +28,12 @@
        </chunk>
 
        <chunk>
-         <name>/engines/engine/starter</name>
-         <node>/engines/engine/starter</node>
-         <type>bool</type>
-         <format>%d</format>
+         <name>/controls/engines/engine/throttle</name>
+         <node>/controls/engines/engine/throttle</node>
+         <type>float</type>
+         <format>%f</format>
        </chunk>
-   </input>   
-   
+   </input>
+
 </generic>
 </PropertyList>

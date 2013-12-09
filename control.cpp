@@ -85,8 +85,8 @@ void net_parse (FGNetFDM *net, const char *data) {
 
 void net_serialize (FGNetCtrls *net, char *data, size_t datalen) {
   
-  snprintf (data, datalen, "%f\t%f\t%f\t%d\n",
-            net->aileron, net->elevator, net->rudder, net->starter_power[0]);
+  snprintf (data, datalen, "%f\t%f\t%f\t%f\n",
+            net->aileron, net->elevator, net->rudder, net->throttle[0]);
   return ;
 }
 
@@ -162,24 +162,34 @@ void send (channel_t<T> &ch) {
   return;
 }
 
+typedef void * control_thread;
+
 extern "C" {
   void control_setup ();
   void control_law (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
+
+  /* If a "thread" is running pass it to the control law. */
+  void control_law_thread (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets, void *thread);
+
+  control_thread trigger_takeoff (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
 }
 
 #define CMD_LEN 32
 
 struct command {
-    char *c;
-    char buf[CMD_LEN];
+  char *c;
+  char buf[CMD_LEN];
 };
 
 struct config {
-  unsigned int manual; /* Let the pilot fly the plane. */
+  unsigned int manual;         /* Let the pilot fly the plane. */
   unsigned int command_listen; /* Read characters as a command. */
   struct command command;
-  unsigned int alert; /* The user should be alerted. */
-  string msg; /* A message to be displayed to the user. */
+  unsigned int alert;          /* The user should be alerted. */
+  string msg;                  /* A message to be displayed to the
+                                  user. */
+  unsigned int takeoff;        /* Initiate take off */
+  control_thread ctx;           /* Context for a thread of control */
 };
 
 void draw_text (int x, int y, string text, uint16_t fg, uint16_t bg) {
@@ -269,11 +279,10 @@ void update_display (double targets[256], struct config *c,
   int h = tb_height ();
   struct tb_event ev;
 
-
   if (tb_peek_event (&ev, 10)) {
     /* Clear any alerts after input */
     c->alert = 0;
-
+    
     switch (ev.type) {
     case TB_EVENT_KEY:
       switch (ev.key) {
@@ -288,8 +297,9 @@ void update_display (double targets[256], struct config *c,
         c->command_listen ^= 1;
         command_reset (&c->command);
         break;
-      case TB_KEY_CTRL_V:
-        actuators->starter_power[0] = 1;
+      case TB_KEY_CTRL_L:
+        /* Start takeoff */
+        c->takeoff = 1;
         break;
       case TB_KEY_ENTER:
         if (c->command_listen) { /* Parse the command */
@@ -322,7 +332,6 @@ void update_display (double targets[256], struct config *c,
         exit (0);
         
         if (c->command_listen) {
-          
           command_back (&c->command);
         }
         break;
@@ -341,7 +350,7 @@ void update_display (double targets[256], struct config *c,
   draw_horizontal_line (0, 0, w, TB_GREEN);
 
   string title = "ATS Mission Control";
-  int len = title.length();
+  int len = title.length ();
 
   /* Center the title */
   draw_text ((w/2) - (len/2), 0, title, TB_DEFAULT, TB_GREEN);
@@ -396,7 +405,7 @@ int main () {
   client (actuators, "127.0.0.1", 5010);
   
   /*
-    Start off keeping the aircraft steady
+    Start off by keeping the aircraft steady
    */
   targets['r'] = 0.0;
   targets['p'] = 5.0;
@@ -408,13 +417,18 @@ int main () {
   while (1) {
     int ready;
     
-    actuators.msg.starter_power[1] = 0; //default is to zero out the starter.
-    
+    actuators.msg.throttle[0] = 0.75; /* By default, keep throttle at
+                                         75% */
     update_display (targets, &conf, &sensors.msg, &actuators.msg);
-    
     ready = receive (sensors);
     
     if(ready == 0 && !conf.manual) {
+      if (conf.takeoff) {
+        /* Kickoff the takeoff sequence */
+        trigger_takeoff (&sensors.msg, &actuators.msg, targets);
+        conf.takeoff = 0;
+      }
+      
       control_law (&sensors.msg, &actuators.msg, targets);
       send (actuators);
     }

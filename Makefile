@@ -14,7 +14,7 @@ control.o: control.cpp
 	$(CC) -c $(CCFLAGS) -o $@ $<
 
 autopilot.o: autopilot.dats
-	patscc -c -O2 -o autopilot.o $<
+	patscc -DATS_MEMALLOC_LIBC -c -O2 -o autopilot.o $<
 
 panel.o: panel.dats
 	patscc -c -O2 -o panel.o $<
