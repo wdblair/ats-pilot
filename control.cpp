@@ -161,15 +161,15 @@ void send (channel_t<T> &ch) {
   return;
 }
 
-typedef void * control_thread;
+typedef void * mission;
 
 extern "C" {
   void control_setup ();
   void control_law (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
 
   /* If a "thread" is running pass it to the control law. */
-  control_thread control_law_thread (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets, void *thread);
-  control_thread trigger_takeoff (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
+  mission control_law_mission (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets, void *mission);
+  mission trigger_takeoff (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
 }
 
 #define CMD_LEN 32
@@ -187,7 +187,7 @@ struct config {
   string msg;                  /* A message to be displayed to the
                                   user. */
   unsigned int takeoff;        /* Initiate take off */
-  control_thread ctx;           /* Context for a thread of control */
+  mission ctx;                 /* Context for a thread of control */
 };
 
 void draw_text (int x, int y, string text, uint16_t fg, uint16_t bg) {
@@ -428,7 +428,7 @@ int main () {
       }
       
       if (conf.ctx) {
-        conf.ctx = control_law_thread (&sensors.msg, &actuators.msg, targets, conf.ctx);
+        conf.ctx = control_law_mission (&sensors.msg, &actuators.msg, targets, conf.ctx);
       } else {
         control_law (&sensors.msg, &actuators.msg, targets);
       }

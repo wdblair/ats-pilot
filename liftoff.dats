@@ -1,34 +1,39 @@
 (*
   A rough draft for a take off procedure
+  
+  These functions make up a "mission"
 *)
 staload "./autopilot.sats"
 
 #define ATS_DYNLOADFLAG 0
 
 extern
-fun accelerate (sensors, actuators): thread
+fun accelerate (sensors, actuators): mission
 
 extern
-fun tilt_up (sensors, actuators): thread
+fun tilt_up (sensors, actuators): mission
 
 extern
-fun lift_off (sensors, actuators): thread
+fun lift_off (sensors, actuators): mission
+
+extern
+fun level_off (sensors, actuators): mission
 
 fun stay_steady (
   input: sensors, output: actuators
-): thread = let
-  val strm = $delay (stream_nil{bool} ())
+): mission = let
+  (* An unsatisifiable mission will never end. *)
+  fun unsat ():<!laz> stream (bool) = 
+    $delay ( stream_cons{bool} (false, unsat()))
 in
-  make_thread (strm, stay_steady)
+  make_mission (unsat(), stay_steady)
 end
 
 (*
-  The initial action taken by the autopilot to lift off.
+  The initial action taken by the autopilot to take off.
 *)
 implement takeoff (input, controls) = let
-  (* 
-    Set the plane's initial state, and start to accelerate
-  *)
+   (* Set the plane's initial state, and start to accelerate *)
    val () = set_roll (controls, 0.0)
    val () = set_pitch (controls, 3.0)
    val () = set_heading (controls, input.heading)

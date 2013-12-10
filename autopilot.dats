@@ -159,7 +159,7 @@ end
 
 assume sensors = ref (FGNetFDM)
 assume actuators = ref (controllers)
-assume thread = ref( @(stream (bool), event) )
+assume mission = ref( @(stream (bool), event) )
 assume flow = stream (double)
 
 implement trigger_takeoff (input) =  takeoff (input, control)
@@ -168,7 +168,7 @@ implement control_setup () = {
   val (vbox (pf) | ctrl) = ref_get_viewptr (control)
   val () = $effmask_ref (
     begin
-      make_pid<roll> (ctrl->roll, 3.0, ~0.025, 0.018, 0.009);
+      make_pid<roll> (ctrl->roll, 3.0, ~0.02, 0.015, 0.009);
       make_pid<pitch> (ctrl->pitch, 3.0, 0.03, 0.004, 0.01);
       (*
         There's an issue with adjusting yaw since we often
@@ -176,11 +176,12 @@ implement control_setup () = {
         but this controller flies to the left to go all the way
         back to zero instead of adjusting slightly to the right.
       *)
-      make_pid<yaw> (ctrl->yaw, 3.0, ~0.1, 0.045, 0.012);
+      make_pid<yaw> (ctrl->yaw, 3.0, ~0.09, 0.06, 0.008);
       
       make_pid<speed> (ctrl->speed, 10.0, 1.5, 0.75, 0.05);
   end
   )
+  (* Start off with no controller on speed. *)
   val () = $effmask_ref (pid_disable (ctrl->speed))
   val () = ctrl->throttle := 0.0
 }
@@ -232,14 +233,14 @@ end
 
 (* ****** ****** *)
 
-implement make_thread (samples, action) = let
-  val thread = @(samples, action)
+implement make_mission (samples, action) = let
+  val mission = @(samples, action)
 in
-  ref<@(stream(bool), event)> (thread)
+  ref<@(stream(bool), event)> (mission)
 end
 
 implement wait_until (samples, action) =
-  make_thread (samples, action)
+  make_mission (samples, action)
   
 (* ****** ****** *)
 
@@ -313,18 +314,18 @@ end
 
 (* ****** ****** *)
 
-implement control_law_thread (sensors, actuators, targets, thread) = let
-  val (bs, finished) = !thread
+implement control_law_mission (sensors, actuators, targets, mission) = let
+  val (bs, finished) = !mission
   val next_task = (case+ !bs of
     | stream_cons (cond, bss) =>
       if cond then
         finished (sensors, control)
       else let
-        val () = !thread := @(bss, finished)
-      in thread end
+        val () = !mission := @(bss, finished)
+      in mission end
     | stream_nil () =>
         finished (sensors, control)
-  ): thread
+  ): mission
   //
   val (pf, fpf | ctrl) = $UN.ref_vtake {controllers} (control)
   val () = 
