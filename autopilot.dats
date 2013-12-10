@@ -1,7 +1,9 @@
 (*
   autopilot
     
-  A simple autopilot that aims to keep an aircraft steady.
+  A simple autopilot for flightgear. It uses lazy evaluation
+  in order to provide the programmer with a framework to
+  specify asynchronous events.
 *)
 
 #define ATS_DYNLOADFLAG 0
@@ -11,6 +13,8 @@
 %{^
 #include <math.h>
 %}
+
+staload UN = "prelude/SATS/unsafe.sats"
 
 staload "./net.sats"
 staload "./container.sats"
@@ -34,11 +38,12 @@ abst@ype pid (tk:tkind) = @{
 assume pid (tk:tkind) = @{
   target= double,
   k_p= double,
-  k_i= double, 
+  k_i= double,
   k_d= double,
   error_sum= double,
   max_sum= double,
-  last_value= double
+  last_value= double,
+  active= bool
 }
 
 fun {plant:tkind}
@@ -53,6 +58,7 @@ make_pid (
   p.error_sum := 0.0;
   p.max_sum := max_sum;
   p.last_value := 0.0;
+  p.active := true;
 end
 
 (*
@@ -103,11 +109,15 @@ in
   control_apply$filter<plant> (p, (proportional + integral) + derivative)
 end
 
-extern
-fun control_setup (): void = "ext#"
+fun {plant: tkind}
+pid_disable (
+  p: &pid(plant)
+): void = p.active := false
 
-extern
-fun control_law (&FGNetFDM, &FGNetCtrls, &(container(double))): void = "ext#"
+fun {plant: tkind}
+pid_enable (
+  p: &pid(plant)
+): void = p.active := true
 
 (*
   The three "plants" we'll control in this example
@@ -125,7 +135,9 @@ typedef controllers = @{
   roll= pid (roll),
   pitch= pid (pitch),
   yaw= pid (yaw),
-  speed= pid (speed)
+  speed= pid (speed),
+  (* Nothing fancy for the throttle *)
+  throttle= double
 }
 
 local
@@ -143,24 +155,14 @@ in
   )
 end
 
-
 (* ****** ***** *)
 
 assume sensors = ref (FGNetFDM)
-assume actuators = '{
-  ctrls = ref (FGNetCtrls)
-  targets = ref (container(double))
-}
-
+assume actuators = ref (controllers)
 assume thread = ref( @(stream (bool), event) )
+assume flow = stream (double)
 
-implement trigger_takeoff (input, output, targets) = let
-  val sensors = ref<FGNetFDM> (input)
-in
-  takeoff (sensors, actuators)
-end
-
-(* ****** ***** *)
+implement trigger_takeoff (input) =  takeoff (input, control)
 
 implement control_setup () = {
   val (vbox (pf) | ctrl) = ref_get_viewptr (control)
@@ -176,9 +178,11 @@ implement control_setup () = {
       *)
       make_pid<yaw> (ctrl->yaw, 3.0, ~0.1, 0.045, 0.012);
       
-      make_pid<speed> (ctrl->speed, 100.0, 0.1, 0.0, 0.0);
+      make_pid<speed> (ctrl->speed, 10.0, 1.5, 0.75, 0.05);
   end
   )
+  val () = $effmask_ref (pid_disable (ctrl->speed))
+  val () = ctrl->throttle := 0.0
 }
 
 fun cap (v: double, limit: double): double = let
@@ -224,4 +228,121 @@ in
   actuators.aileron := aileron;
   actuators.elevator := elevator;
   actuators.rudder := rudder
+end
+
+(* ****** ****** *)
+
+implement make_thread (samples, action) = let
+  val thread = @(samples, action)
+in
+  ref<@(stream(bool), event)> (thread)
+end
+
+implement wait_until (samples, action) =
+  make_thread (samples, action)
+  
+(* ****** ****** *)
+
+implement sensors_get_roll (sensors) =
+  $delay (stream_cons{double} (sensors->phi, sensors_get_roll (sensors)))
+
+implement sensors_get_pitch (sensors) =
+  $delay (stream_cons{double} (sensors->theta, sensors_get_pitch (sensors)))
+
+implement sensors_get_heading_flow (sensors) =
+  $delay (stream_cons{double} (sensors->psi, sensors_get_heading_flow (sensors)))
+
+implement sensors_get_heading_double (sensors) = sensors->psi
+
+implement sensors_get_speed (sensors) = 
+  $delay (stream_cons{double} (sensors->vcas, sensors_get_speed (sensors)))
+  
+implement sensors_get_elevation (sensors) =
+  $delay (stream_cons{double} (sensors->agl, sensors_get_elevation (sensors)))
+  
+(* ****** ****** *)
+
+implement set_roll (actuators, r) = actuators->roll.target := r
+implement set_pitch (actuators, p) = actuators->pitch.target := p
+implement set_heading (actuators, h) = actuators->yaw.target := h
+implement set_throttle (actuators, t) = actuators->throttle := t
+implement set_speed (actuators, s) = begin
+  actuators->speed.target := s;
+  actuators->speed.active := true;
+end
+
+implement disable_speed (actuators) = {
+  val (pf, fpf | p) = $UN.ref_vtake (actuators)
+  val () = pid_disable (p->speed)
+  prval () = fpf (pf)
+}
+
+(* ****** ****** *)
+
+implement geq_flow_double (flow, i) = let
+  fun merge (samples: stream (double), i: double): stream_con (bool) = 
+    case+ !samples of 
+      | stream_cons (sample, bs) => let
+          val geq = sample >= i
+        in
+          stream_cons{bool} (geq, geq_flow_double (bs, i))
+        end
+      | stream_nil () => stream_nil ()
+in
+  $delay (merge (flow, i))
+end
+
+#define :: stream_cons
+
+exception StreamLengthMismatch of ()
+
+implement conj_stream_bool (lhs, rhs) = let
+  fun merge (lhs: stream (bool), rhs: stream (bool)): stream_con (bool) = 
+    case+ (!lhs, !rhs) of
+      | (stream_cons (l, lhss), stream_cons (r, rhss)) =>
+        (l && r) :: conj_stream_bool (lhss, rhss)
+      | (stream_nil (), stream_nil ()) => 
+        stream_nil ()
+      (* TODO: Mix in the ATS2 runtime for this. *)
+      | (_, _) =>> exit (1) where { 
+        val () = prerrln! "Mismatch in stream lengths"
+      }
+in
+  $delay (merge (lhs, rhs))
+end
+
+(* ****** ****** *)
+
+implement control_law_thread (sensors, actuators, targets, thread) = let
+  val (bs, finished) = !thread
+  val next_task = (case+ !bs of
+    | stream_cons (cond, bss) =>
+      if cond then
+        finished (sensors, control)
+      else let
+        val () = !thread := @(bss, finished)
+      in thread end
+    | stream_nil () =>
+        finished (sensors, control)
+  ): thread
+  //
+  val (pf, fpf | ctrl) = $UN.ref_vtake {controllers} (control)
+  val () = 
+    if ctrl->speed.active then let
+      val pitch = pid_apply<speed> (ctrl->speed, sensors->vcas)
+    in
+      ctrl->pitch.target := pitch
+    end
+  //
+  val aileron = pid_apply<roll> (ctrl->roll, sensors->phi)
+  val elevator = pid_apply<pitch> (ctrl->pitch, sensors->theta)
+  val rudder = pid_apply<yaw> (ctrl->yaw, sensors->psi)
+  val throttle = ctrl->throttle;
+  prval () = fpf (pf)
+in
+  actuators.aileron := aileron;
+  actuators.elevator := elevator;
+  actuators.rudder := rudder;
+  actuators.throttle.[0] := throttle;
+  next_task
 end

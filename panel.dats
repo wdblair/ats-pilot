@@ -97,7 +97,7 @@ implement draw_table (w, h, y, targets, sensors, actuators) = let
   val yaw = @{
     id= 'y',
     label= "Yaw"
-  } 
+  }
   var buf = @[char][128]('\0')
   val _ = $extfcall (void,
     "snprintf", buf, 128, "|%-8s|%8s|%8s|%8s|%8s|", "Plant", "Target", "Input", "Error", "Output"
@@ -105,7 +105,6 @@ implement draw_table (w, h, y, targets, sensors, actuators) = let
   
   fun draw_separator (y: int): void =
     draw_text_c_string (0, y, "|++++++++|++++++++|++++++++|++++++++|++++++++|", TB_DEFAULT, TB_DEFAULT)
-
 in
   draw_text_c (0, y, buf, TB_DEFAULT, TB_DEFAULT); (* Heading *)
   draw_separator (y+1);
@@ -113,5 +112,13 @@ in
   draw_separator (y+3);
   draw_row<pitch> (pitch, y+4, targets, sensors, actuators);
   draw_separator (y+5);
-  draw_row<yaw> (yaw, y+6, targets, sensors, actuators)
+  draw_row<yaw> (yaw, y+6, targets, sensors, actuators);
+  $extfcall (void,
+    "snprintf", buf, 128, "|Air-Speed %8.2f", sensors.vcas
+  );
+  draw_text_c (0, y+8, buf, TB_DEFAULT, TB_DEFAULT);
+  $extfcall (void,
+    "snprintf", buf, 128, "|Elevation %8.2f", sensors.agl
+  );
+  draw_text_c (0, y+9, buf, TB_DEFAULT, TB_DEFAULT);
 end

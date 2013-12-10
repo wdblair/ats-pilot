@@ -76,15 +76,14 @@ Sendto(int fd, const void *ptr, size_t nbytes, int flags,
 
 void net_parse (FGNetFDM *net, const char *data) {
   int i;
-
-  sscanf (data, "R=%f\nP=%f\nH=%f\n",
-          &(net->phi), &(net->theta), &(net->psi));
   
+  sscanf (data, "R=%f\nP=%f\nH=%f\nA=%f\nV=%f\n\n",
+          &(net->phi), &(net->theta), &(net->psi), &(net->agl), &(net->vcas));
+
   return ;
 }
 
 void net_serialize (FGNetCtrls *net, char *data, size_t datalen) {
-  
   snprintf (data, datalen, "%f\t%f\t%f\t%f\n",
             net->aileron, net->elevator, net->rudder, net->throttle[0]);
   return ;
@@ -169,8 +168,7 @@ extern "C" {
   void control_law (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
 
   /* If a "thread" is running pass it to the control law. */
-  void control_law_thread (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets, void *thread);
-
+  control_thread control_law_thread (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets, void *thread);
   control_thread trigger_takeoff (FGNetFDM *sensors, FGNetCtrls *actuators, double *targets);
 }
 
@@ -406,7 +404,7 @@ int main () {
   
   /*
     Start off by keeping the aircraft steady
-   */
+  */
   targets['r'] = 0.0;
   targets['p'] = 5.0;
 
@@ -416,20 +414,25 @@ int main () {
 
   while (1) {
     int ready;
-    
+
     actuators.msg.throttle[0] = 0.75; /* By default, keep throttle at
                                          75% */
     update_display (targets, &conf, &sensors.msg, &actuators.msg);
     ready = receive (sensors);
     
-    if(ready == 0 && !conf.manual) {
+    if (ready == 0 && !conf.manual) {
       if (conf.takeoff) {
         /* Kickoff the takeoff sequence */
-        trigger_takeoff (&sensors.msg, &actuators.msg, targets);
+        conf.ctx = trigger_takeoff (&sensors.msg, &actuators.msg, targets);
         conf.takeoff = 0;
       }
       
-      control_law (&sensors.msg, &actuators.msg, targets);
+      if (conf.ctx) {
+        conf.ctx = control_law_thread (&sensors.msg, &actuators.msg, targets, conf.ctx);
+      } else {
+        control_law (&sensors.msg, &actuators.msg, targets);
+      }
+      
       send (actuators);
     }
     

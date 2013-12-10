@@ -1,7 +1,9 @@
 (*
   A rough draft for a take off procedure
 *)
-staload "autopilot.sats"
+staload "./autopilot.sats"
+
+#define ATS_DYNLOADFLAG 0
 
 extern
 fun accelerate (sensors, actuators): thread
@@ -12,12 +14,13 @@ fun tilt_up (sensors, actuators): thread
 extern
 fun lift_off (sensors, actuators): thread
 
-extern
-fun level_off (sensors, actuators): thread
-
 fun stay_steady (
-  sensors, actuators
-): thread = make_thread ($delay (stream_nil{bool} ()), stay_steady)
+  input: sensors, output: actuators
+): thread = let
+  val strm = $delay (stream_nil{bool} ())
+in
+  make_thread (strm, stay_steady)
+end
 
 (*
   The initial action taken by the autopilot to lift off.
@@ -37,27 +40,27 @@ implement accelerate (input, controls) = let
   (* Set max throttle for take off *)
   val () = set_throttle (controls, 0.9)
 in
-  wait_until (input.speed >= 40, tilt_up)
+  wait_until (input.speed >= 40.0, tilt_up)
 end
 
 implement tilt_up (input, controls) = let
   (* Tilt the nose slightly up until we rise off the ground. *)
   val () = set_pitch (controls, 7.0)
 in
-  wait_until (input.speed >= 70 andalso input.elevation >= 10, lift_off)
+  wait_until (input.speed >= 70.0 andalso input.elevation >= 5.0, lift_off)
 end
 
 implement lift_off (input, controls) = let
   (* Start our climb, using the pitch of the plane to regulate our speed. *)
   val () = set_speed (controls, 70.0)
-  val b = true && false
 in
-  wait_until (input.elevation >= 1000, level_off)
+  wait_until (input.elevation >= 600.0, level_off)
 end
 
 implement level_off (input, controls) = let
-  (* Reduce speed and lower our angle of attack to start cruising. *)
-  val () = set_pitch (controls, 1.0)
+  (* Reduce speed and lower our pitch to start cruising. *)
+  val () = disable_speed (controls)
+  val () = set_pitch (controls, 3.0)
   val () = set_throttle (controls, 0.75)
 in
   stay_steady (input, controls)

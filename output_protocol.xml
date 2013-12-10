@@ -27,6 +27,20 @@
          <format>H=%f</format>
       </chunk>
 
+      <chunk>
+         <name>/position/altitude-agl-ft</name>
+         <node>/position/altitude-agl-ft</node>
+         <type>float</type>
+         <format>A=%f</format>
+      </chunk>
+
+      <chunk>
+         <name>/velocities/airspeed-kt</name>
+         <node>/velocities/airspeed-kt</node>
+         <type>float</type>
+         <format>V=%f</format>
+      </chunk>
+
       <!--
           
       <chunk>
