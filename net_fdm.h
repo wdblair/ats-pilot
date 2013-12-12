@@ -113,5 +113,6 @@ struct FGNetFDM {
     float spoilers;
 };
 
+typedef struct FGNetFDM FGNetFDM;
 
 #endif // _NET_FDM_HXX

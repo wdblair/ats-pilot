@@ -70,7 +70,16 @@ set_speed (actuators, double): void
 fun
 disable_speed (actuators): void
 
-abstype mission = ptr
+abst@ype mission_record = @{
+  samples= ptr,
+  satisfied= ptr
+}
+
+absvtype mission = ptr
+
+fun mission_sample (!mission): bool
+
+fun mission_execute (mission, sensors, actuators): mission
 
 typedef event = (sensors, actuators) -> mission
 

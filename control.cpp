@@ -394,7 +394,9 @@ void update_display (double targets[256], struct config *c,
 
 int main () {
   static double targets[256];
-  struct config conf = {.manual = 1};
+  struct config conf = {};
+
+  conf.manual = 1;
   
   channel_t<FGNetCtrls> actuators;
   channel_t<FGNetFDM> sensors;
@@ -414,7 +416,7 @@ int main () {
 
   while (1) {
     int ready;
-
+    
     actuators.msg.throttle[0] = 0.75; /* By default, keep throttle at
                                          75% */
     update_display (targets, &conf, &sensors.msg, &actuators.msg);

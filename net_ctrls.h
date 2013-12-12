@@ -142,6 +142,7 @@ struct FGNetCtrls {
     uint32_t reserved[RESERVED_SPACE];	 // 100 bytes reserved for future use.
 };
 
+typedef struct FGNetCtrls FGNetCtrls;
 
 #endif // _NET_CTRLS_HXX
 

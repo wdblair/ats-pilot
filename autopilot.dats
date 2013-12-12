@@ -3,7 +3,7 @@
     
   A simple autopilot for flightgear. It uses lazy evaluation
   in order to provide the programmer with a framework to
-  specify asynchronous events.
+  work with asynchronous events.
 *)
 
 #define ATS_DYNLOADFLAG 0
@@ -74,7 +74,7 @@ control_apply$filter (
 
 fun {plant: tkind}
 pid_apply (
-  p: &pid(plant), process: double
+  p: &pid (plant), process: double
 ): double = let
   val error = process - p.target
   
@@ -111,12 +111,12 @@ end
 
 fun {plant: tkind}
 pid_disable (
-  p: &pid(plant)
+  p: &pid (plant)
 ): void = p.active := false
 
 fun {plant: tkind}
 pid_enable (
-  p: &pid(plant)
+  p: &pid (plant)
 ): void = p.active := true
 
 (*
@@ -159,7 +159,35 @@ end
 
 assume sensors = ref (FGNetFDM)
 assume actuators = ref (controllers)
-assume mission = ref( @(stream (bool), event) )
+
+extern
+praxi b0ytes2type {a:t@ype} {l:addr} (
+  pfat: b0ytes(sizeof(a)) @ l
+): a? @ l
+
+
+assume mission_record = @{
+  samples= stream (bool),
+  satisfied= event
+}
+
+extern
+praxi free_mission_lemma (
+  m: mission
+): [l:addr] (b0ytes (sizeof(mission_record)), mfree_gc_v (l))
+
+implement make_mission (samples, action) = let
+  val (pf, _ | p) = malloc_gc (sizeof<mission_record>)
+  prval (pf) = b0ytes2type{mission_record}(pf)
+  val () = p->samples := samples
+  val () = p->satisfied := action
+  prval () = __free (pf) where {
+    extern praxi __free {a:t@ype}{l:addr}(a @ l): void
+  }
+in
+  $UN.castvwtp0{mission}{ptr}(p)
+end
+
 assume flow = stream (double)
 
 implement trigger_takeoff (input) =  takeoff (input, control)
@@ -233,12 +261,6 @@ end
 
 (* ****** ****** *)
 
-implement make_mission (samples, action) = let
-  val mission = @(samples, action)
-in
-  ref<@(stream(bool), event)> (mission)
-end
-
 implement wait_until (samples, action) =
   make_mission (samples, action)
   
@@ -294,6 +316,7 @@ in
 end
 
 #define :: stream_cons
+#define nil stream_nil
 
 exception StreamLengthMismatch of ()
 
@@ -314,17 +337,40 @@ end
 
 (* ****** ****** *)
 
-implement control_law_mission (sensors, actuators, targets, mission) = let
-  val (bs, finished) = !mission
-  val next_task = (case+ !bs of
-    | stream_cons (cond, bss) =>
-      if cond then
-        finished (sensors, control)
-      else let
-        val () = !mission := @(bss, finished)
-      in mission end
-    | stream_nil () =>
-        finished (sensors, control)
+(* 
+  Let's assume flows produced by sensors have infinite length.
+*)
+
+exception FiniteStream of ()
+
+implement mission_sample (mission) = let
+  val p = $UN.castvwtp1 {ptr} {mission} (mission)
+  val (pf, fpf | r) = $UN.ptr0_vtake {mission_record} (p)
+  val sample = (
+    case+ !(r->samples) of
+      | (b :: bs) => let
+        val () = r->samples := bs
+      in
+        b
+      end
+      | nil () => $raise FiniteStream ()
+  ): bool
+  prval () = fpf (pf)
+in
+  sample
+end
+
+(* ****** ****** *)
+
+implement control_law_mission (sensors, actuators, targets, objective) = let
+  val next_objective = ( let
+    val satisfied = mission_sample (objective)
+  in
+    if satisfied then
+      mission_execute (objective, sensors, control)
+    else
+      objective
+  end
   ): mission
   //
   val (pf, fpf | ctrl) = $UN.ref_vtake {controllers} (control)
@@ -345,5 +391,5 @@ in
   actuators.elevator := elevator;
   actuators.rudder := rudder;
   actuators.throttle.[0] := throttle;
-  next_task
+  next_objective
 end
