@@ -171,11 +171,6 @@ assume mission_record = @{
   satisfied= event
 }
 
-extern
-praxi free_mission_lemma (
-  m: mission
-): [l:addr] (b0ytes (sizeof(mission_record)), mfree_gc_v (l))
-
 implement make_mission (samples, action) = let
   val (pf, _ | p) = malloc_gc (sizeof<mission_record>)
   prval (pf) = b0ytes2type{mission_record}(pf)
@@ -302,35 +297,32 @@ implement disable_speed (actuators) = {
 
 (* ****** ****** *)
 
+#define :: stream_cons
+#define nil stream_nil
+
 implement geq_flow_double (flow, i) = let
   fun merge (samples: stream (double), i: double): stream_con (bool) = 
     case+ !samples of 
-      | stream_cons (sample, bs) => let
+      | sample :: bs => let
           val geq = sample >= i
         in
           stream_cons{bool} (geq, geq_flow_double (bs, i))
         end
-      | stream_nil () => stream_nil ()
+      | nil () => nil ()
 in
   $delay (merge (flow, i))
 end
-
-#define :: stream_cons
-#define nil stream_nil
 
 exception StreamLengthMismatch of ()
 
 implement conj_stream_bool (lhs, rhs) = let
   fun merge (lhs: stream (bool), rhs: stream (bool)): stream_con (bool) = 
     case+ (!lhs, !rhs) of
-      | (stream_cons (l, lhss), stream_cons (r, rhss)) =>
+      | (l :: lhss, r :: rhss) =>
         (l && r) :: conj_stream_bool (lhss, rhss)
-      | (stream_nil (), stream_nil ()) => 
-        stream_nil ()
-      (* TODO: Mix in the ATS2 runtime for this. *)
-      | (_, _) =>> exit (1) where { 
-        val () = prerrln! "Mismatch in stream lengths"
-      }
+      | (nil (), nil ()) =>
+        nil ()
+      | (_, _) =>> $raise StreamLengthMismatch ()
 in
   $delay (merge (lhs, rhs))
 end
@@ -340,7 +332,6 @@ end
 (* 
   Let's assume flows produced by sensors have infinite length.
 *)
-
 exception FiniteStream of ()
 
 implement mission_sample (mission) = let
@@ -348,7 +339,7 @@ implement mission_sample (mission) = let
   val (pf, fpf | r) = $UN.ptr0_vtake {mission_record} (p)
   val sample = (
     case+ !(r->samples) of
-      | (b :: bs) => let
+      | b :: bs => let
         val () = r->samples := bs
       in
         b
@@ -358,6 +349,22 @@ implement mission_sample (mission) = let
   prval () = fpf (pf)
 in
   sample
+end
+
+extern
+castfn free_mission_lemma (
+  m: mission
+): [l:addr] (b0ytes (sizeof(mission_record)) @ l, mfree_gc_v (l) | ptr l)
+
+implement mission_execute (mission, sensors, control) = let
+  val p = $UN.castvwtp1 {ptr} {mission} (mission)
+  val (pf, fpf | r) = $UN.ptr0_vtake {mission_record} (p)
+  val next_mission = r->satisfied (sensors, control)
+  prval () = fpf (pf)
+  val (pfbyte, freegc | p) = free_mission_lemma (mission)
+  val () = mfree_gc (pfbyte, freegc | p)
+in
+  next_mission
 end
 
 (* ****** ****** *)
@@ -370,11 +377,10 @@ implement control_law_mission (sensors, actuators, targets, objective) = let
       mission_execute (objective, sensors, control)
     else
       objective
-  end
-  ): mission
+  end) : mission
   //
   val (pf, fpf | ctrl) = $UN.ref_vtake {controllers} (control)
-  val () = 
+  val () =
     if ctrl->speed.active then let
       val pitch = pid_apply<speed> (ctrl->speed, sensors->vcas)
     in

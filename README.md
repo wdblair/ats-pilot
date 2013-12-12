@@ -60,7 +60,7 @@ ailerons, and rudders.
 What makes a control law?
   
 - A target value
-- A function update: (reference, params) ->  new_value;
+- A transfer function : (input, parameters) ->  output
 - A model for each plant or process we wish to control
   
 The template system allows us to define a typekind which can
