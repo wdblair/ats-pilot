@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<PropertyList>
+<generic>
+   <input>
+      <line_separator>;</line_separator>
+      <var_separator>,</var_separator>
+
+      <chunk>
+         <name>/autopilot/locks/altitude-hold</name>
+         <node>/autopilot/locks/altitude-hold</node>
+         <type>string</type>
+      </chunk>
+
+      <chunk>
+         <name>/autopilot/locks/heading</name>
+         <node>/autopilot/locks/heading</node>
+         <type>string</type>
+      </chunk>
+
+      <chunk>
+         <name>/autopilot/locks/roc-lock</name>
+         <node>/autopilot/locks/roc-lock</node>
+         <type>string</type>
+      </chunk>
+
+      <chunk>
+         <name>/autopilot/internal/target-pitch-deg</name>
+         <node>/autopilot/internal/target-pitch-deg</node>
+         <type>string</type>
+      </chunk>
+
+      <chunk>
+         <name>/autopilot/settings/heading-bug-deg</name>
+         <node>/autopilot/settings/heading-bug-deg</node>
+         <type>string</type>
+      </chunk>
+
+      <chunk>
+         <name>/autopilot/settings/target-altitude-ft</name>
+         <node>/autopilot/settings/target-altitude-ft</node>
+         <type>string</type>
+      </chunk>
+
+      <chunk>
+         <name>/autopilot/settings/target-speed-kt</name>
+         <node>/autopilot/settings/target-speed-kt</node>
+         <type>string</type>
+      </chunk>
+
+   </input>
+      
+</generic>
+</PropertyList>

@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<PropertyList>
+<generic>
+   <output>
+      <line_separator>newline</line_separator>
+      <var_separator>tab</var_separator>
+
+      <chunk>
+         <name>/orientation/heading-deg</name>
+         <node>/orientation/heading-deg</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+      
+      <chunk>
+         <name>/position/latitude-deg</name>
+         <node>/position/latitude-deg</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+
+      <chunk>
+         <name>/position/longitude-deg</name>
+         <node>/position/longitude-deg</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+
+      <chunk>
+         <name>/velocities/groundspeed-kt</name>
+         <node>/velocities/groundspeed-kt</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+
+      <chunk>
+         <name>/velocities/airspeed-kt</name>
+         <node>/velocities/airspeed-kt</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+
+      <chunk>
+         <name>/position/altitude-ft</name>
+         <node>/position/altitude-ft</node>
+         <type>float</type>
+         <format>%f</format>
+      </chunk>
+   </output>
+      
+</generic>
+</PropertyList>
