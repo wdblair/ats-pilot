@@ -1,0 +1,269 @@
+<?xml version="1.0"?>
+
+<!--
+A less UI focused autopilot intended to be directed by an
+AI agent.
+-->
+
+<PropertyList>
+
+  <pid-controller> 
+    <name>Wings Level</name>
+    <debug>false</debug>
+    <enable>
+      <property>/uav/locks/wings-level</property>
+      <value>on</value>
+    </enable>
+    <input>
+      <property>/orientation/roll-deg</property>
+    </input>
+    <reference>
+      <property>uav/internal/target-roll-deg</property>
+    </reference>
+    <output>
+      <property>uav/internal/aileron-cmd</property>
+    </output>
+    <config>
+      <Kp>0.02</Kp>
+      <beta>1.0</beta>    <!-- input value weighing factor -->
+      <alpha>0.1</alpha>  <!-- low pass filter weighing factor -->
+      <gamma>0.0</gamma>  <!-- input value weighing factor for -->
+      <!-- unfiltered derivative error -->
+      <Ti>10.0</Ti>       <!-- integrator time -->
+      <Td>1.0</Td>    <!-- derivator time -->
+      <u_min>-1.0</u_min>
+      <u_max>1.0</u_max>
+    </config>
+  </pid-controller>
+
+  <!-- During takeoff, we use the rudder to control the heading -->
+  <pid-controller>
+    <name>Ground Heading Hold</name>
+    <debug>false</debug>
+    <enable>
+      <prop>/uav/locks/heading</prop>
+      <value>dg-heading-hold-rudder</value>
+    </enable>
+    <input>
+      <prop>/uav/internal/heading-offset-deg</prop>
+    </input>
+    <reference>0</reference>
+    <output>
+      <prop>/uav/internal/rudder-cmd</prop>
+    </output>
+    <config>
+      <Kp>-0.055</Kp>
+      <Ti>10.0</Ti>
+      <Td>1.0</Td>
+      <u_min>-1.0</u_min>
+      <u_max>1.0</u_max>
+    </config>
+  </pid-controller>
+
+  <pid-controller>
+    <name>Pitch Hold</name>
+    <debug>false</debug>
+    <enable>
+      <prop>/uav/locks/altitude</prop>
+      <value>pitch-hold</value>
+    </enable>
+    <input>
+      <prop>/orientation/pitch-deg</prop>
+    </input>
+    <reference>/uav/internal/target-pitch-deg</reference>
+    <output>
+      <prop>/uav/internal/elevator-cmd</prop>
+    </output>
+    <config>
+      <Kp>-0.045</Kp>
+      <Ti>10.0</Ti>
+      <Td>0.0</Td>
+      <u_min>-1.0</u_min>
+      <u_max>1.0</u_max>
+    </config>
+  </pid-controller>
+  
+  <pid-controller>
+    <name>Vertical speed pitch hold</name>
+    <debug>false</debug>
+    <enable>
+      <prop>/uav/locks/roc-lock</prop>
+      <value>on</value>
+    </enable>
+    <input>
+      <prop>/uav/internal/vertical-speed-fpm</prop>
+    </input>
+    <reference>/uav/internal/target-roc-fpm</reference>
+    <output>
+      <prop>/uav/internal/target-pitch-deg</prop>
+    </output>
+    <config>
+      <Kp>0.002</Kp>
+      <beta>0.9</beta>    <!-- input value weighing factor -->
+      <alpha>0.1</alpha>  <!-- low pass filter weighing factor -->
+      <gamma>0.0</gamma>  <!-- input value weighing factor for -->
+      <!-- unfiltered derivative error -->
+      <Ti>5.0</Ti>
+      <Td>1.0</Td>
+      <u_min>-10.0</u_min>
+      <u_max>10.0</u_max>
+    </config>
+  </pid-controller>
+
+  <!-- Keep most recent pitch as target  -->
+  <filter>
+    <name>AP:Pitch sample and hold</name>
+    <debug>false</debug>
+    <enable>
+      <prop>/uav/locks/roc-lock</prop>
+      <value>filter</value>
+    </enable>
+    <type>gain</type>
+    <gain>1.0</gain>
+    <input>/orientation/pitch-deg</input>
+    <output>/uav/internal/target-pitch-deg</output>
+  </filter>
+
+  <filter>
+    <name>AP:Get feet per minute</name>
+    <debug>false</debug>
+    <type>gain</type>
+    <gain>60.0</gain>
+    <input>/velocities/vertical-speed-fps</input>
+    <output>/uav/internal/vertical-speed-fpm</output>
+  </filter>
+
+  <filter>
+    <name>Target Rate of Climb Computer (ALT HOLD)</name>
+    <debug>false</debug>
+    <enable>
+      <prop>/uav/locks/altitude-hold</prop>
+      <value>on</value>
+    </enable>
+    <type>gain</type>
+    <input>position/altitude-ft</input>
+    <reference>uav/settings/target-altitude-ft</reference>
+    <gain>-0.5</gain> <!-- 1000ft offset gives 500fpm roc -->
+    <output>uav/internal/target-roc-fpm</output>
+    <min>-2000</min>
+    <max>3000</max>
+  </filter>
+
+  <pid-controller>
+    <name>Auto throttle</name>
+    <debug>false</debug>
+    <enable>
+      <prop>/uav/locks/speed</prop>
+      <value>speed-with-throttle</value>
+    </enable>
+    <input>
+      <prop>/velocities/airspeed-kt</prop>
+    </input>
+    <reference>
+      <prop>/uav/settings/target-speed-kt</prop>
+    </reference>
+    <output>
+      <prop>/uav/internal/throttle-cmd</prop>
+    </output>
+    <config>
+      <Kp>0.15</Kp>
+      <Ti>20.0</Ti>
+      <Td>0.00001</Td>
+      <u_min>0.0</u_min>
+      <u_max>1.0</u_max>
+    </config>
+  </pid-controller>
+
+  <filter>
+    <name>SERVO-DRIVER:throttle</name>
+    <debug>false</debug>
+    <feedback-if-disabled>true</feedback-if-disabled>
+    <enable>
+      <prop>/uav/locks/speed</prop>
+      <value>speed-with-throttle</value>
+    </enable>
+    <input>/uav/internal/throttle-cmd</input>
+    <output>
+      <prop>/controls/engines/engine[0]/throttle</prop>
+      <prop>/controls/engines/engine[1]/throttle</prop>
+      <prop>/controls/engines/engine[2]/throttle</prop>
+      <prop>/controls/engines/engine[3]/throttle</prop>
+    </output>
+    <type>noise-spike</type>
+    <max-rate-of-change>0.1</max-rate-of-change>
+  </filter>
+
+  <filter>
+    <name>SERVO-DRIVER:aileron</name>
+    <debug>false</debug>
+    <feedback-if-disabled>true</feedback-if-disabled>
+    <enable>
+      <prop>/uav/locks/wings-level</prop>
+      <value>on</value>
+    </enable>
+    <input>/uav/internal/aileron-cmd</input>
+    <output>/controls/flight/aileron</output>
+    <type>noise-spike</type>
+    <max-rate-of-change>0.16</max-rate-of-change>
+  </filter>  
+
+  <filter>
+    <name>SERVO-DRIVER:rudder</name>
+    <debug>false</debug>
+    <feedback-if-disabled>true</feedback-if-disabled>
+    <enable>
+      <prop>/uav/locks/heading</prop>
+      <value>dg-heading-hold-rudder</value>
+    </enable>
+    <input>/uav/internal/rudder-cmd</input>
+    <output>/controls/flight/rudder</output>
+    <type>noise-spike</type>
+    <max-rate-of-change>0.16</max-rate-of-change>
+  </filter>
+
+  <filter>
+    <name>SERVO-DRIVER:elevator</name>
+    <debug>false</debug>
+    <feedback-if-disabled>true</feedback-if-disabled>
+    <enable>
+      <prop>/uav/locks/altitude</prop>
+      <value>pitch-hold</value>
+    </enable>
+    <input>/uav/internal/elevator-cmd</input>
+    <output>/controls/flight/elevator</output>
+    <type>noise-spike</type>
+    <max-rate-of-change>0.16</max-rate-of-change>
+  </filter>
+
+  <!-- Normalize the heading to -180 to 180 -->
+  <filter>
+    <name>Heading Offset Computer</name>
+    <debug>false</debug>
+    <type>gain</type>
+    <gain>1.0</gain>
+    <input>/uav/settings/heading-bug-deg</input>
+    <reference>/orientation/heading-magnetic-deg</reference>
+    <output>/uav/internal/heading-offset-deg</output>
+    <period>
+      <min>-180</min>
+      <max>180</max>
+    </period>
+  </filter>
+
+  <filter>
+    <name>Target Roll Computer</name>
+    <debug>false</debug>
+    <enable>
+      <prop>/uav/locks/heading</prop>
+      <value>dg-heading-hold-roll</value>
+    </enable>
+    <type>gain</type>
+    <input>/uav/internal/heading-offset-deg</input>
+    <output>/uav/internal/target-roll-deg</output>
+    <gain>2.0</gain>
+    <!-- Make these depend on a property I can set from Nasal -->
+    <min>-10.0</min>
+    <max>10.0</max>
+  </filter>
+
+</PropertyList>
