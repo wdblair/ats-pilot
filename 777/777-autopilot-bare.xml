@@ -133,6 +133,8 @@ AI agent.
     <output>/uav/internal/vertical-speed-fpm</output>
   </filter>
 
+  <!-- TODO: Make this into PID controller (its steady state is
+  typically beneath the target value -->
   <filter>
     <name>Target Rate of Climb Computer (ALT HOLD)</name>
     <debug>false</debug>
@@ -142,7 +144,7 @@ AI agent.
     </enable>
     <type>gain</type>
     <input>position/altitude-ft</input>
-    <reference>uav/settings/target-altitude-ft</reference>
+    <reference>uav/planner/altitude</reference>
     <gain>-0.5</gain> <!-- 1000ft offset gives 500fpm roc -->
     <output>uav/internal/target-roc-fpm</output>
     <min>-2000</min>
@@ -241,8 +243,8 @@ AI agent.
     <debug>false</debug>
     <type>gain</type>
     <gain>1.0</gain>
-    <input>/uav/settings/heading-bug-deg</input>
-    <reference>/orientation/heading-magnetic-deg</reference>
+    <input>/uav/planner/heading-bug-deg</input>
+    <reference>/orientation/heading-deg</reference>
     <output>/uav/internal/heading-offset-deg</output>
     <period>
       <min>-180</min>

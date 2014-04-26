@@ -54,6 +54,8 @@ var uav = 'uav';
 var lks = 'locks';
 var stg = 'settings';
 var intr = 'internal';
+var pln = 'planner';
+
 
 control_law = func (test, next) {
   print ("Running Control Law");
@@ -76,7 +78,7 @@ control_law = func (test, next) {
 
 #Set up the aircraft for flight.
 var setup = func {
- heading = getprop ('/orientation/heading-magnetic-deg');
+ heading = getprop ('/orientation/heading-deg');
 
  print ("Selecting target heading: ", heading);
 
@@ -159,7 +161,13 @@ var ready_retract_flaps = func {
 
 var retract_flaps = func {
   setprop ('/controls/flight/flaps', 0);
-  setprop (uav, stg, 'target-altitude-ft', 10000);
+  
+  var desired_height = getprop (uav, pln, 'target-altitude-ft');
+  if (desired_height == 0) {
+     #go to 10,000 ft by default
+     setprop (uav, pln, 'target-altitude-ft', 10000);
+  }
+  
   setprop (uav, lks, 'altitude-hold', 'on');
   
   return [ready_to_turn, turn];
@@ -173,6 +181,7 @@ var ready_to_turn = func {
 
 var turn = func {
     setprop (uav, lks, 'heading', 'dg-heading-hold-roll');
+    setprop (uav, pln, 'status', 'ready');
     setprop (uav, stg, 'heading-bug-deg', 154.0);
     
     return [wait, 0];
@@ -182,13 +191,11 @@ var wait = func {
     return 0;
 };
 
-setprop ('/uav/locks/takeoff', 'off');
-
-setlistener('/uav/locks/takeoff', setup);
+setprop ('/uav/planner/mode', 'off');
 
 var ready_to_takeoff = func {
-   var start = getprop ('/uav/locks/takeoff');
-   return start == 'on';
+   var start = getprop ('/uav/planner/mode');
+   return start == 'to/ga';
 };
 
 control_law (ready_to_takeoff, setup);
