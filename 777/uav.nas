@@ -82,6 +82,9 @@ var setup = func {
 
  print ("Selecting target heading: ", heading);
 
+ #Turn of parking brake
+ setprop('/controls/gear/brake-parking', 0);
+
  setprop (uav, pln, 'heading', heading);
  setprop (uav, intr, 'heading-offset-deg', 0.0);
  setprop (uav, lks, 'heading', 'dg-heading-hold-rudder');
@@ -197,4 +200,10 @@ var ready_to_takeoff = func {
    return start == 'to/ga';
 };
 
+#Start the plane up...
+settimer (func { 
+  controls.autostart ();
+}, 5);
+
+#Kick off the control law
 control_law (ready_to_takeoff, setup);
