@@ -82,8 +82,7 @@ var setup = func {
 
  print ("Selecting target heading: ", heading);
 
- setprop (uav, stg, 'heading-bug-deg', heading);
- #Clear the initial error
+ setprop (uav, pln, 'heading', heading);
  setprop (uav, intr, 'heading-offset-deg', 0.0);
  setprop (uav, lks, 'heading', 'dg-heading-hold-rudder');
 
