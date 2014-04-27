@@ -2,52 +2,60 @@
 <PropertyList>
 <generic>
    <input>
-      <line_separator>;</line_separator>
-      <var_separator>,</var_separator>
+      <line_separator>newline</line_separator>
+      <var_separator>tab</var_separator>
 
+      <!--
+          The plane's current mode. Set it to one
+          of the following:
+
+          off
+
+          Do nothing.
+
+          to/ga
+          
+          The plane will complete its pre-takeoff checklist,
+          proceed to take off and reach a safe altitude
+          and start to encircle the surrounding area.
+
+          cruise
+          
+          The plane will adjust to the desired heading and 
+          desired altitude. If no altitude is given, it will just
+          climb to 30000 ft. It will then accelerate to cruising
+          speed (around 300 knots).
+
+          land
+
+          The plane will attempt to land at a local airport (feel free
+          to add a destination property containing the destination airport)
+      -->
       <chunk>
-         <name>/autopilot/locks/altitude-hold</name>
-         <node>/autopilot/locks/altitude-hold</node>
-         <type>string</type>
+        <name>/uav/planner/mode</name>
+        <node>/uav/planner/mode</node>
+        <type>string</type>
       </chunk>
 
+      <!--
+          Set the plane's desired heading. If you'd
+          like to add a deadline as well, we could
+          add that.
+      -->
       <chunk>
-         <name>/autopilot/locks/heading</name>
-         <node>/autopilot/locks/heading</node>
-         <type>string</type>
+         <name>/uav/planner/heading</name>
+         <node>/uav/planner/heading</node>
+         <type>float</type>
       </chunk>
 
+      <!--
+          Set the plane's desired altitude
+      -->
       <chunk>
-         <name>/autopilot/locks/roc-lock</name>
-         <node>/autopilot/locks/roc-lock</node>
-         <type>string</type>
+        <name>/uav/planner/altitude</name>
+        <node>/uav/planner/altitude</node>
+        <type>int</type>
       </chunk>
-
-      <chunk>
-         <name>/autopilot/internal/target-pitch-deg</name>
-         <node>/autopilot/internal/target-pitch-deg</node>
-         <type>string</type>
-      </chunk>
-
-      <chunk>
-         <name>/autopilot/settings/heading-bug-deg</name>
-         <node>/autopilot/settings/heading-bug-deg</node>
-         <type>string</type>
-      </chunk>
-
-      <chunk>
-         <name>/autopilot/settings/target-altitude-ft</name>
-         <node>/autopilot/settings/target-altitude-ft</node>
-         <type>string</type>
-      </chunk>
-
-      <chunk>
-         <name>/autopilot/settings/target-speed-kt</name>
-         <node>/autopilot/settings/target-speed-kt</node>
-         <type>string</type>
-      </chunk>
-
    </input>
-      
 </generic>
 </PropertyList>
