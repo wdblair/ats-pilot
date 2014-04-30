@@ -268,4 +268,25 @@ AI agent.
     <max>10.0</max>
   </filter>
 
+  <!--
+      Set constant fuel level for the left and right tank.
+  -->
+  <filter>
+    <name>Fuel Left</name>
+    <debug>false</debug>
+    <type>gain</type>
+    <input>4000.0</input>
+    <output>/consumables/fuel/tank/level-gal_us</output>
+    <gain>1.0</gain>
+  </filter>
+
+  <filter>
+    <name>Fuel Right</name>
+    <debug>false</debug>
+    <type>gain</type>
+    <input>4000.0</input>
+    <output>/consumables/fuel/tank[2]/level-gal_us</output>
+    <gain>1.0</gain>
+  </filter>
+
 </PropertyList>
