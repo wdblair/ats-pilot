@@ -52,7 +52,7 @@ AI agent.
       <prop>/uav/internal/rudder-cmd</prop>
     </output>
     <config>
-      <Kp>-0.055</Kp>
+      <Kp>-0.085</Kp>
       <Ti>10.0</Ti>
       <Td>1.0</Td>
       <u_min>-1.0</u_min>
